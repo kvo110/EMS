@@ -38,7 +38,7 @@ Employee-Management-System-TeamProject/
 
 | Date | Type | Points | Assignment | Status |
 |------|------|--------|------------|--------|
-| **11/02/2025 11:59PM** | Individual | 150pts | UML Use Case + Sequence + DB Schema | ❌ |
+| **11/02/2025 11:59PM** | Individual | 150pts | UML Use Case + Sequence + DB Schema | ✅ |
 | **11/11/2025 11:59PM** | Group | 160pts | Programming Tasks + Test Cases | ❌ |
 | **11/16/2025 11:59PM** | Individual | 110pts | Sequence Diagrams (Salary + Add Employee) | ❌ |
 | **12/08/2025 11:59PM** | Group | 150pts | Software Design Document (SDD) | ❌ |
@@ -109,9 +109,9 @@ Employee-Management-System-TeamProject/
 ## 📋 Individual Assignments
 
 ### Due 11/02/2025 (150pts)
-- [ ] **UML Use Case Diagram** - Overall system components and actors
-- [ ] **Sequence Diagram** - Employee search functionality  
-- [ ] **Database Schema Diagram** - Generated from dBeaver
+- [✅] **UML Use Case Diagram** - Overall system components and actors
+- [✅] **Sequence Diagram** - Employee search functionality  
+- [✅] **Database Schema Diagram** - Generated from dBeaver
 
 ### Due 11/16/2025 (110pts)
 - [ ] **Sequence Diagram** - Salary increase by percentage
