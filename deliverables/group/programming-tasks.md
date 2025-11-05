@@ -24,12 +24,12 @@ Choose 5 tasks from the 10 required programming tasks. These can be:
 #### 3. Employee Data CRUD Operations
 - **Description:** Create, Read, Update, Delete employee records
 - **Components:** Employee model, EmployeeDAO, validation
-- **Status:** ❌ Not Started
+- **Status:** ✅ Completed
 
 #### 4. Salary Update by Percentage
 - **Description:** Update salaries for employees in specified range
 - **Components:** Salary calculation logic, batch update operations
-- **Status:** ❌ Not Started
+- **Status:** ✅ Completed
 
 #### 5. Report Generation System
 - **Description:** Generate pay statements and management reports
