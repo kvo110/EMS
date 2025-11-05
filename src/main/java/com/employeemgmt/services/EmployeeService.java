@@ -2,8 +2,7 @@ package com.employeemgmt.services;
 
 import com.employeemgmt.dao.EmployeeDAO;
 import com.employeemgmt.models.Employee;
-import com.employeemgmt.models.UserRole;
-
+import com.employeemgmt.models.User.UserRole;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -138,8 +137,8 @@ public class EmployeeService {
     // TODO: Add validation methods
     private boolean validateEmployeeData(Employee emp) {
         if (emp == null) return false;
-        if (emp.getFullName() == null || emp.getFullName().isEmpty()) return false;
-        if (emp.getJobTitle() == null || emp.getJobTitle().isEmpty()) return false;
+        if (emp.getFname() == null || emp.getFname().isEmpty()) return false;
+        if (emp.getLname() == null || emp.getLname().isEmpty()) return false;
         if (emp.getSalary() == null || emp.getSalary().doubleValue() <= 0) return false;
         return true;
     }
