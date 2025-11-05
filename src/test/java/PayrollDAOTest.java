@@ -8,12 +8,7 @@ import java.util.Map;
 
 /**
  * Test Cases for PayrollDAO
- * 
- * Tests payroll-related database operations:
- * - Pay statement history retrieval
- * - Report generation (total pay by job title/division)
- * - Employee hiring date range queries
- * - CRUD operations for payroll records
+
  */
 public class PayrollDAOTest {
     

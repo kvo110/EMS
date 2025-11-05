@@ -8,6 +8,7 @@
 
 # Database Properties (contains sensitive data)
 resources/database.properties
+src/main/resources/database.properties
 
 # IDE Files
 .vscode/
