@@ -1,32 +1,139 @@
 package com.employeemgmt.models;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.Objects;
+
 /**
- * Payroll model class
+ * Payroll model class representing a pay statement
  * 
- * TODO: Implement Payroll entity
- * - payID
- * - pay_date
- * - earnings
- * - fed_tax, fed_med, fed_SS
- * - state_tax
- * - retire_401k
- * - health_care
+ * Maps to pay_statement table:
+ * - id (primary key)
  * - empid (foreign key to Employee)
- * 
- * Requirements:
- * - Calculate net pay from gross earnings and deductions
- * - Validate tax calculations
- * - Support pay statement generation
+ * - pay_date
+ * - gross (gross earnings)
+ * - taxes (total taxes)
+ * - net (net pay after taxes)
  */
 public class Payroll {
     
-    // TODO: Add private fields for payroll attributes
+    private long id;
+    private int empid;
+    private LocalDate payDate;
+    private BigDecimal gross;
+    private BigDecimal taxes;
+    private BigDecimal net;
     
-    // TODO: Add constructors
+    // Default constructor
+    public Payroll() {
+    }
     
-    // TODO: Add getters and setters
+    // Full constructor
+    public Payroll(long id, int empid, LocalDate payDate, BigDecimal gross, BigDecimal taxes, BigDecimal net) {
+        this.id = id;
+        this.empid = empid;
+        this.payDate = payDate;
+        this.gross = gross;
+        this.taxes = taxes;
+        this.net = net;
+    }
     
-    // TODO: Add calculation methods (calculateNetPay, etc.)
+    // Constructor without id (for new records)
+    public Payroll(int empid, LocalDate payDate, BigDecimal gross, BigDecimal taxes) {
+        this.empid = empid;
+        this.payDate = payDate;
+        this.gross = gross;
+        this.taxes = taxes;
+        this.net = calculateNetPay(gross, taxes);
+    }
     
-    // TODO: Override Object methods
+    // Calculate net pay from gross and taxes
+    public static BigDecimal calculateNetPay(BigDecimal gross, BigDecimal taxes) {
+        if (gross == null || taxes == null) {
+            return BigDecimal.ZERO;
+        }
+        return gross.subtract(taxes).setScale(2, RoundingMode.HALF_UP);
+    }
+    
+    // Recalculate net pay
+    public void recalculateNetPay() {
+        this.net = calculateNetPay(this.gross, this.taxes);
+    }
+    
+    // Getters and Setters
+    public long getId() {
+        return id;
+    }
+    
+    public void setId(long id) {
+        this.id = id;
+    }
+    
+    public int getEmpid() {
+        return empid;
+    }
+    
+    public void setEmpid(int empid) {
+        this.empid = empid;
+    }
+    
+    public LocalDate getPayDate() {
+        return payDate;
+    }
+    
+    public void setPayDate(LocalDate payDate) {
+        this.payDate = payDate;
+    }
+    
+    public BigDecimal getGross() {
+        return gross;
+    }
+    
+    public void setGross(BigDecimal gross) {
+        this.gross = gross;
+        recalculateNetPay();
+    }
+    
+    public BigDecimal getTaxes() {
+        return taxes;
+    }
+    
+    public void setTaxes(BigDecimal taxes) {
+        this.taxes = taxes;
+        recalculateNetPay();
+    }
+    
+    public BigDecimal getNet() {
+        return net;
+    }
+    
+    public void setNet(BigDecimal net) {
+        this.net = net;
+    }
+    
+    @Override
+    public String toString() {
+        return "Payroll{" +
+                "id=" + id +
+                ", empid=" + empid +
+                ", payDate=" + payDate +
+                ", gross=" + gross +
+                ", taxes=" + taxes +
+                ", net=" + net +
+                '}';
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Payroll payroll = (Payroll) o;
+        return id == payroll.id && empid == payroll.empid;
+    }
+    
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, empid);
+    }
 }
