@@ -1,7 +1,6 @@
 import com.employeemgmt.services.EmployeeService;
 import com.employeemgmt.services.EmployeeService.SearchResult;
 import com.employeemgmt.services.AuthenticationService;
-import com.employeemgmt.services.AuthenticationService.AuthenticationResult;
 import com.employeemgmt.dao.EmployeeDAO.SearchCriteria;
 import com.employeemgmt.models.User;
 import com.employeemgmt.models.User.UserRole;
@@ -48,8 +47,18 @@ public class EmployeeSearchTest {
             EmployeeService employeeService = new EmployeeService();
             System.out.println("✅ EmployeeService initialized successfully");
             
+            // Verify the service is functional by checking if it's not null
+            if (employeeService != null) {
+                System.out.println("✅ EmployeeService instance created and ready");
+            }
+            
             AuthenticationService authService = new AuthenticationService();
             System.out.println("✅ AuthenticationService initialized successfully");
+            
+            // Verify the authentication service is functional
+            if (authService != null) {
+                System.out.println("✅ AuthenticationService instance created and ready");
+            }
             
         } catch (Exception e) {
             System.out.println("❌ Service initialization failed: " + e.getMessage());

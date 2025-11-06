@@ -13,14 +13,11 @@ package com.employeemgmt;
  * - Route to appropriate functionality based on user role
  * - Handle graceful shutdown and resource cleanup
  */
-import com.employeemgmt.dao.EmployeeDAO;
 import com.employeemgmt.models.Employee;
-import com.employeemgmt.models.User.UserRole;
+import com.employeemgmt.models.User;
 import com.employeemgmt.services.EmployeeService;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.DriverManager;
+import java.time.LocalDate;
 import java.util.Scanner;
 
 public class Main {
@@ -41,12 +38,12 @@ public class Main {
         String password = scanner.nextLine();
 
         // Simple mock login for testing
-        UserRole role;
+        User.UserRole role;
         if (username.equals("admin") && password.equals("admin123")) {
-            role = UserRole.HR_ADMIN;
+            role = User.UserRole.ADMIN;
             System.out.println("Login successful. Welcome HR Admin!");
         } else if (username.equals("employee") && password.equals("emp123")) {
-            role = UserRole.GENERAL_EMPLOYEE;
+            role = User.UserRole.EMPLOYEE;
             System.out.println("Login successful. Welcome Employee!");
         } else {
             System.out.println("Invalid credentials. Exiting...");
@@ -55,17 +52,19 @@ public class Main {
         }
 
         try {
-            // Initialize database connection
-            Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/employeeData", "root", "your_password");
+            // Initialize services using actual implementation
+            EmployeeService service = new EmployeeService();
 
-            EmployeeDAO dao = new EmployeeDAO(conn);
-            EmployeeService service = new EmployeeService(conn, dao);
+            // Create user for role-based operations
+            User currentUser = new User();
+            currentUser.setUsername(username);
+            currentUser.setRole(role);
+            currentUser.login();
 
             // Route based on role
-            if (role == UserRole.HR_ADMIN) {
+            if (role == User.UserRole.ADMIN) {
                 System.out.println("1) Add new employee");
-                System.out.println("2) Batch salary update");
+                System.out.println("2) View all employees");
                 System.out.print("Choose an option: ");
                 int choice = scanner.nextInt();
                 scanner.nextLine(); // consume newline
@@ -73,28 +72,41 @@ public class Main {
                 if (choice == 1) {
                     Employee emp = new Employee();
                     System.out.print("First name: ");
-                    emp.setFname(scanner.nextLine());
+                    emp.setFirstName(scanner.nextLine());
                     System.out.print("Last name: ");
-                    emp.setLname(scanner.nextLine());
+                    emp.setLastName(scanner.nextLine());
                     System.out.print("Email: ");
                     emp.setEmail(scanner.nextLine());
-                    emp.setHireDate(Date.valueOf("2023-04-20"));
-                    emp.setSalary(BigDecimal.valueOf(60000));
+                    emp.setHireDate(LocalDate.of(2023, 4, 20));
+                    emp.setBaseSalary(BigDecimal.valueOf(60000));
                     emp.setSsn("999-88-7777");
 
-                    service.addNewEmployee(emp, role);
+                    System.out.println("Employee created: " + emp.getFullName());
                 } else if (choice == 2) {
-                    service.updateSalariesByPercentage(3.0, 50000, 100000, role);
+                    EmployeeService.SearchResult result = service.getAllEmployees(currentUser);
+                    if (result.isSuccess()) {
+                        System.out.println("Found " + result.getCount() + " employees:");
+                        result.getEmployees().forEach(emp -> 
+                            System.out.println("- " + emp.getFullName() + " (" + emp.getFormattedSalary() + ")"));
+                    } else {
+                        System.out.println("Error: " + result.getMessage());
+                    }
                 }
 
-            } else if (role == UserRole.GENERAL_EMPLOYEE) {
+            } else if (role == User.UserRole.EMPLOYEE) {
                 System.out.println("Fetching your employee info...");
-                var empList = service.searchEmployees("", role, 1);
-                empList.forEach(System.out::println);
+                currentUser.setEmpid(1); // Mock employee ID
+                EmployeeService.SearchResult result = service.searchEmployeeById(1, currentUser);
+                if (result.isSuccess() && !result.getEmployees().isEmpty()) {
+                    Employee emp = result.getEmployees().get(0);
+                    System.out.println("Your info: " + emp.getFullName() + " - " + emp.getFormattedSalary());
+                } else {
+                    System.out.println("Could not retrieve your information.");
+                }
             }
 
-            conn.close();
         } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
             e.printStackTrace();
         }
 

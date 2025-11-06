@@ -4,8 +4,6 @@ import com.employeemgmt.dao.EmployeeDAO;
 import com.employeemgmt.dao.EmployeeDAO.SearchCriteria;
 import com.employeemgmt.models.Employee;
 import com.employeemgmt.models.User;
-import com.employeemgmt.models.User.UserRole;
-import com.employeemgmt.utils.SecurityUtils;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
