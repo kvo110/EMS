@@ -4,6 +4,19 @@
 
 A comprehensive employee management system for Company 'Z' built with Java and MySQL. The system provides secure, role-based access for HR administrators and general employees to manage employee data, payroll, and generate reports.
 
+## 👥 Team Contributors
+
+### Programming Tasks Implementation
+
+- **Danny Nguyen**: Project lead, database design, Task 1 (User Authentication), Task 2 (Employee Search)
+- **Huy Vo**: Task 3 (Employee CRUD Operations), Task 4 (Salary Update by Percentage)
+- **Prakash Rizal**: Task 5 (Report Generation System)
+
+### Individual Contributions
+
+- **Danny Nguyen**: UML diagrams, database schema design, project architecture
+- **Team Collaboration**: Code integration, testing, and final submission preparation
+
 ## 🗂️ Project Structure
 
 ```
@@ -42,7 +55,15 @@ Employee-Management-System-TeamProject/
 
 │   │   └── utils/                    # Utility classes (Validation, Security)
 
-│   └── test/java/                    # Test classes
+│   └── test/java/                 # ✅ COMPREHENSIVE TESTING
+│       ├── FinalAllTasksTest.java        # ✅ Main comprehensive test (All 5 Tasks)
+│       ├── AuthenticationSystemTest.java # ✅ Task 1: User Authentication
+│       ├── EmployeeSearchTest.java       # ✅ Task 2: Employee Search
+│       ├── EmployeeCRUDTest.java         # ✅ Task 3: Employee CRUD
+│       ├── SalaryUpdateTest.java         # ✅ Task 4: Salary Updates
+│       ├── AllTasksTest.java             # ✅ Sequential test runner
+│       ├── DatabaseConnectionTest.java   # ✅ Database connectivity
+│       └── README.md                     # ✅ Test documentation
 
 ├── uml-diagrams/                     # UML diagrams and documentation
 
@@ -50,21 +71,24 @@ Employee-Management-System-TeamProject/
 
 │   ├── UML_Use_Case.png             # ✅ COMPLETED - Use case diagram  
 
-│   └── UML_Sequence_Diagram.png     # ✅ COMPLETED - Employee search sequence
-
-├── documentation/                    # Project documentation
-
-├── deliverables/                     # Assignment deliverables
-
-│   ├── individual/                   # Individual assignments
-
-│   └── group/                        # Group assignments
-
-├── resources/                        # Configuration files
-
-└── lib/                             # External libraries
+│   └── UML_Sequence_Diagram.png  # ✅ Employee search sequence
+│
+├── documentation/                # Project documentation
+└── deliverables/                # Assignment deliverables
+    ├── individual/              # Individual assignments
+    └── group/                   # Group assignments
 
 ```
+
+### 📊 Task Implementation Details
+
+| Task                        | Implementer   | Status      | Database Connected |
+| --------------------------- | ------------- | ----------- | ------------------ |
+| Task 1: User Authentication | Danny Nguyen  | ✅ Complete | ✅ Yes             |
+| Task 2: Employee Search     | Danny Nguyen  | ✅ Complete | ✅ Yes             |
+| Task 3: Employee CRUD       | Huy Vo        | ✅ Complete | ✅ Yes             |
+| Task 4: Salary Updates      | Huy Vo        | ✅ Complete | ✅ Yes             |
+| Task 5: Report Generation   | Prakash Rizal | ✅ Complete | ✅ Yes             |
 
 ## 📅 Project Timeline & Deadlines
 
@@ -76,15 +100,13 @@ Employee-Management-System-TeamProject/
 
 | **11/02/2025 11:59PM** | Individual | 150pts | UML Use Case + Sequence + DB Schema | ✅ **COMPLETED** |
 
-| **11/11/2025 11:59PM** | Group | 160pts | Programming Tasks + Test Cases | ❌ **7 DAYS LEFT** |
+| **11/11/2025 11:59PM** | Group | 160pts | Programming Tasks + Test Cases | ✅ **COMPLETED** |
 
-| **11/16/2025 11:59PM** | Individual | 110pts | Sequence Diagrams (Salary + Add Employee) | ❌ |
+| **11/16/2025 11:59PM** | Individual | 110pts | Sequence Diagrams (Salary + Add Employee) | ✅ **COMPLETED** |
 
 | **12/08/2025 11:59PM** | Group | 150pts | Software Design Document (SDD) | ❌ |
 
 | **12/11/2025 11:59PM** | Group | 250pts | Final Demo Video + Code | ❌ |
-
-> **⚠️ NO LATE PENALTIES ALLOWED** for Group assignments (11/11, 12/08, 12/11)
 
 ## 🎯 Key Features
 
@@ -176,19 +198,118 @@ USE employeeData;
 - Update `resources/database.properties` with MySQL Workbench connection settings
 - Configure HR Admin and General Employee database users
 
-## 📋 Next Priority: Group Assignment (Due 11/11/2025)
+## 🧪 How to Run Tests
 
-### **5 Programming Tasks to Implement**
+**🎯 TL;DR - Quick Start:**
 
-1.**User Authentication System** (`UserDAO.java`, `AuthenticationService.java`)
+```bash
+cd .../EMS
+javac -cp "lib/*:src/main/java:src/test/java:resources" src/test/java/*.java
+java -cp "lib/*:src/main/java:src/test/java:resources" FinalAllTasksTest
+```
 
-2.**Employee Search Functionality** (`EmployeeDAO.java`, search methods)
+This runs the complete test suite for all 5 tasks and shows submission readiness.
 
-3.**Employee CRUD Operations** (`EmployeeService.java`, update/create methods)
+### Prerequisites for Testing
 
-4.**Salary Update by Percentage** (batch salary update logic)
+- Java JDK 11 or higher installed
+- MySQL server running with sample data loaded
+- Environment variables configured in `.env` file
+- All dependencies in `lib/` directory
 
-5.**Report Generation System** (`ReportService.java`, `PayrollDAO.java`)
+### Quick Test (Recommended)
+
+Run the complete system validation test:
+
+```bash
+# Navigate to project directory
+cd .../EMS
+
+# Compile all test files
+javac -cp "lib/*:src/main/java:src/test/java:resources" src/test/java/*.java
+
+# Run complete system test (All 5 Tasks)
+java -cp "lib/*:src/main/java:src/test/java:resources" FinalAllTasksTest
+```
+
+### Individual Task Tests
+
+#### Task 1: User Authentication System
+
+```bash
+java -cp "lib/*:src/main/java:src/test/java:resources" AuthenticationSystemTest
+```
+
+Tests: Password hashing, validation, login/logout, role-based access
+
+#### Task 2: Employee Search Functionality
+
+```bash
+java -cp "lib/*:src/main/java:src/test/java:resources" EmployeeSearchTest
+```
+
+Tests: Search by ID, name, SSN, DOB, advanced search, role-based access
+
+#### Task 3: Employee CRUD Operations
+
+```bash
+java -cp "lib/*:src/main/java:src/test/java:resources" EmployeeCRUDTest
+```
+
+Tests: Create, Read, Update, Delete operations, data validation
+
+#### Task 4: Salary Update by Percentage
+
+```bash
+java -cp "lib/*:src/main/java:src/test/java:resources" SalaryUpdateTest
+```
+
+Tests: Bulk salary updates, percentage calculations, range validation
+
+#### Task 5: Report Generation System
+
+Task 5 is included in the `FinalAllTasksTest` - tests payroll model, report generation, and database integration.
+
+### Sequential Test Runner (Tasks 1-4)
+
+```bash
+java -cp "lib/*:src/main/java:src/test/java:resources" AllTasksTest
+```
+
+### Database Connectivity Test
+
+```bash
+java -cp "lib/*:src/main/java:src/test/java:resources" DatabaseConnectionTest
+```
+
+### Expected Test Results
+
+When all tests pass, you should see:
+
+- ✅ All 5 tasks marked as COMPLETE
+- ✅ Database connectivity confirmed (5 employees found)
+- ✅ Role-based security working
+- ✅ "READY FOR NOVEMBER 11, 2025 SUBMISSION!" message
+
+### Test Files Location
+
+All test files are located in: `src/test/java/`
+
+- `FinalAllTasksTest.java` - **Main comprehensive test**
+- `AuthenticationSystemTest.java` - Task 1 test
+- `EmployeeSearchTest.java` - Task 2 test
+- `EmployeeCRUDTest.java` - Task 3 test
+- `SalaryUpdateTest.java` - Task 4 test
+- `README.md` - Test documentation
+
+### Troubleshooting
+
+If tests fail:
+
+1. **Database Connection**: Ensure MySQL server is running and `.env` file is configured
+2. **Sample Data**: Run `database/sample_data.sql` to populate test data
+3. **Dependencies**: Verify MySQL JDBC driver is in `lib/` directory
+4. **Compilation**: Check that all Java files compile without errors
 
 ### **Required Test Cases**
 
@@ -275,82 +396,3 @@ USE employeeData;
 -**IDE**: IntelliJ IDEA or Eclipse
 
 -**Version Control**: Git (recommended for team collaboration)
-
-### Important Notes
-
-- ⚠️ **No late submissions** for group assignments
-- 📁 **Avoid monolithic code** - use proper class organization
-- 🔐 **Never hardcode passwords** - use configuration files
-- 📝 **Document all code** with proper comments
-- 🧪 **Test thoroughly** before final submission
-
-## 📈 Grading Breakdown
-
-| Component | Points | Type | Due Date | Status |
-
-|-----------|--------|------|----------|--------|
-
-| UML Diagrams (Initial) | 150 | Individual | 11/02/2025 | ✅ **COMPLETED** |
-
-| Programming Tasks + Tests | 160 | Group | 11/11/2025 | 🚀 **IN PROGRESS** (Foundation Complete) |
-
-| Sequence Diagrams (Final) | 110 | Individual | 11/16/2025 | ❌ |
-
-| Software Design Document | 150 | Group | 12/08/2025 | ❌ |
-
-| Final Demo + Code | 250 | Group | 12/11/2025 | ❌ |
-
-| **Total** | **820** | | | **150/820** |
-
----
-
-## 📋 **Development Progress Log**
-
-### **Phase 1: Database Setup & Foundation** ✅ **COMPLETED by Danny (11/04/2025)**
-
-#### **Database Infrastructure:**
-
-- ✅ **Enhanced MySQL Schema** - Created comprehensive normalized database schema with 9 tables
-  - Core tables: `employees`, `address`, `city`, `state`, `division`, `job_titles`
-  - Security tables: `user_account`, `role`
-  - Payroll tables: `payroll`, `pay_statement`
-  - Proper foreign key relationships and indexes for performance
-- ✅ **MySQL Workbench Integration** - Successfully connected project to MySQL Workbench
-- ✅ **Sample Data Population** - Inserted test data for all tables (5 employees, addresses, divisions, etc.)
-- ✅ **Database Connection** - Implemented JDBC connectivity with connection pooling
-
-#### **Security & Configuration:**
-
-- ✅ **Environment Variables** - Implemented `.env` file system for secure credential management
-- ✅ **Git Security** - Added `.gitignore` to prevent credential exposure
-- ✅ **Connection Testing** - Verified Java-MySQL connectivity with comprehensive test suite
-
-#### **Core Model Development:**
-
-- ✅ **Employee Model** - Complete implementation matching enhanced database schema
-  - Field validation (SSN format, email validation, salary constraints)
-  - Business logic methods (age calculation, years of service, formatted salary)
-  - Proper encapsulation with getters/setters
-  - Comparable interface for sorting
-  - Object methods (equals, hashCode, toString)
-- ✅ **Model Testing** - Comprehensive test suite validating all Employee model functionality
-
-#### **Technical Achievements:**
-
-- **Database Schema**: Normalized design supporting 55+ employees with full demographic data
-- **Security**: Environment-based configuration with fallback to properties files
-- **Code Quality**: Full validation, error handling, and comprehensive testing
-- **Performance**: Strategic database indexes and connection pooling
-- **Maintainability**: Clean separation of concerns and proper documentation
-
-### **Next Phase: Programming Tasks Implementation** 🚀 **IN PROGRESS**
-
-**Remaining Tasks for Group Assignment (Due 11/11/2025 - 6 days remaining):**
-
-1. **Task 1**: User Authentication System - Completed by **DANNY NGUYEN ** 11/04/2025
-2. **Task 2**: Employee Search Functionality - Completed by **DANNY NGUYEN ** 11/04/2025
-3. **Task 3**: Employee CRUD Operations
-4. **Task 4**: Salary Update by Percentage
-5. **Task 5**: Report Generation System
-
----
