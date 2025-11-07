@@ -1,7 +1,4 @@
 /*
-    Enhanced Database Schema for Employee Management System
-    Based on Danny's MySQL Workbench design - COMPLETED
-    
     This schema includes all project requirements:
     1. ✅ Address table with empid as primary key and foreign key to employees
     2. ✅ City table (normalized with state references)
@@ -12,6 +9,8 @@
     7. ✅ Performance indexes
 */
 
+-- Create database if it doesn't exist
+CREATE DATABASE IF NOT EXISTS employeeData;
 USE employeeData;
 
 -- STATE & CITY TABLES
