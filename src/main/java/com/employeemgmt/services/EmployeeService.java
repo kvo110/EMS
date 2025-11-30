@@ -1,415 +1,226 @@
 package com.employeemgmt.services;
 
 import com.employeemgmt.dao.EmployeeDAO;
-import com.employeemgmt.dao.EmployeeDAO.SearchCriteria;
 import com.employeemgmt.models.Employee;
 import com.employeemgmt.models.User;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
 import java.util.ArrayList;
-import java.math.BigDecimal;
+import java.util.List;
 
-/**
- * Employee Service Layer
- * Handles business logic for employee operations with role-based access control
- */
+/*
+    EmployeeService
+
+    This sits between the UI layer (JavaFX / console) and the DAO.
+    - UI should talk to this class instead of hitting EmployeeDAO directly.
+    - We do permission checks here using the User object.
+    - We also wrap results into a SearchResult so the UI can show messages
+      without needing to catch a bunch of exceptions.
+*/
 public class EmployeeService {
-    
-    private EmployeeDAO employeeDAO;
-    
-    // Business rule constants
-    private static final BigDecimal MIN_SALARY = new BigDecimal("30000.00");
-    private static final BigDecimal MAX_SALARY = new BigDecimal("500000.00");
-    private static final int MIN_AGE = 16;
-    private static final int MAX_AGE = 100;
-    
-    // Constructor
+
+    private final EmployeeDAO employeeDAO;
+
     public EmployeeService() {
         this.employeeDAO = new EmployeeDAO();
     }
-    
-    /**
-     * Search employees with role-based access control
-     * @param searchCriteria The search criteria
-     * @param currentUser The current logged-in user
-     * @return SearchResult containing employees and access information
-     */
-    public SearchResult searchEmployees(SearchCriteria searchCriteria, User currentUser) {
-        SearchResult result = new SearchResult();
-        
-        // Validate user authentication
-        if (currentUser == null || !currentUser.isLoggedIn()) {
-            result.setSuccess(false);
-            result.setMessage("User must be logged in to search employees");
-            return result;
-        }
-        
-        // Role-based access control
-        if (currentUser.isAdmin()) {
-            // HR Admin: Can search all employees
-            return performAdminSearch(searchCriteria, result);
-        } else if (currentUser.isEmployee() && currentUser.hasEmployeeRecord()) {
-            // General Employee: Can only view their own data
-            return performEmployeeSearch(currentUser.getEmpid(), result);
-        } else {
-            result.setSuccess(false);
-            result.setMessage("Insufficient permissions to search employees");
-            return result;
-        }
-    }
-    
-    /**
-     * Search employee by ID with role-based access
-     * @param empid The employee ID to search for
-     * @param currentUser The current logged-in user
-     * @return SearchResult containing the employee if authorized
-     */
-    public SearchResult searchEmployeeById(int empid, User currentUser) {
-        SearchResult result = new SearchResult();
-        
-        // Validate user authentication
-        if (currentUser == null || !currentUser.isLoggedIn()) {
-            result.setSuccess(false);
-            result.setMessage("User must be logged in to search employees");
-            return result;
-        }
-        
-        // Role-based access control
-        if (currentUser.isAdmin()) {
-            // HR Admin: Can search any employee
-            Optional<Employee> employee = employeeDAO.findById(empid);
-            if (employee.isPresent()) {
-                List<Employee> employees = new ArrayList<>();
-                employees.add(employee.get());
-                result.setSuccess(true);
-                result.setEmployees(employees);
-                result.setMessage("Employee found");
-            } else {
-                result.setSuccess(false);
-                result.setMessage("Employee not found");
-            }
-        } else if (currentUser.isEmployee() && currentUser.hasEmployeeRecord()) {
-            // General Employee: Can only view their own data
-            if (empid == currentUser.getEmpid()) {
-                Optional<Employee> employee = employeeDAO.findById(empid);
-                if (employee.isPresent()) {
-                    List<Employee> employees = new ArrayList<>();
-                    employees.add(employee.get());
-                    result.setSuccess(true);
-                    result.setEmployees(employees);
-                    result.setMessage("Your employee record");
-                } else {
-                    result.setSuccess(false);
-                    result.setMessage("Your employee record not found");
-                }
-            } else {
-                result.setSuccess(false);
-                result.setMessage("You can only view your own employee data");
-            }
-        } else {
-            result.setSuccess(false);
-            result.setMessage("Insufficient permissions to search employees");
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Quick search by name (for HR Admin only)
-     * @param firstName First name (partial matching supported)
-     * @param lastName Last name (partial matching supported)
-     * @param currentUser The current logged-in user
-     * @return SearchResult containing matching employees
-     */
-    public SearchResult searchByName(String firstName, String lastName, User currentUser) {
-        SearchResult result = new SearchResult();
-        
-        // Validate user authentication and authorization
-        if (currentUser == null || !currentUser.isLoggedIn()) {
-            result.setSuccess(false);
-            result.setMessage("User must be logged in to search employees");
-            return result;
-        }
-        
-        if (!currentUser.isAdmin()) {
-            result.setSuccess(false);
-            result.setMessage("Only HR administrators can search employees by name");
-            return result;
-        }
-        
-        // Validate input
-        if ((firstName == null || firstName.trim().isEmpty()) && 
-            (lastName == null || lastName.trim().isEmpty())) {
-            result.setSuccess(false);
-            result.setMessage("Please provide at least first name or last name");
-            return result;
-        }
-        
-        // Perform search
-        List<Employee> employees = employeeDAO.findByName(
-            firstName != null ? firstName.trim() : "", 
-            lastName != null ? lastName.trim() : ""
-        );
-        
-        result.setSuccess(true);
-        result.setEmployees(employees);
-        result.setMessage("Found " + employees.size() + " employee(s)");
-        
-        return result;
-    }
-    
-    /**
-     * Search by SSN (for HR Admin only)
-     * @param ssn The Social Security Number
-     * @param currentUser The current logged-in user
-     * @return SearchResult containing the employee if found
-     */
-    public SearchResult searchBySSN(String ssn, User currentUser) {
-        SearchResult result = new SearchResult();
-        
-        // Validate user authentication and authorization
-        if (currentUser == null || !currentUser.isLoggedIn()) {
-            result.setSuccess(false);
-            result.setMessage("User must be logged in to search employees");
-            return result;
-        }
-        
-        if (!currentUser.isAdmin()) {
-            result.setSuccess(false);
-            result.setMessage("Only HR administrators can search employees by SSN");
-            return result;
-        }
-        
-        // Validate SSN format
-        if (ssn == null || !ssn.matches("\\d{3}-\\d{2}-\\d{4}")) {
-            result.setSuccess(false);
-            result.setMessage("Invalid SSN format. Please use XXX-XX-XXXX format");
-            return result;
-        }
-        
-        // Perform search
-        Optional<Employee> employee = employeeDAO.findBySSN(ssn);
-        
-        if (employee.isPresent()) {
-            List<Employee> employees = new ArrayList<>();
-            employees.add(employee.get());
-            result.setSuccess(true);
-            result.setEmployees(employees);
-            result.setMessage("Employee found");
-        } else {
-            result.setSuccess(false);
-            result.setMessage("No employee found with SSN: " + ssn);
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Search by date of birth (for HR Admin only)
-     * @param dob The date of birth
-     * @param currentUser The current logged-in user
-     * @return SearchResult containing matching employees
-     */
-    public SearchResult searchByDOB(LocalDate dob, User currentUser) {
-        SearchResult result = new SearchResult();
-        
-        // Validate user authentication and authorization
-        if (currentUser == null || !currentUser.isLoggedIn()) {
-            result.setSuccess(false);
-            result.setMessage("User must be logged in to search employees");
-            return result;
-        }
-        
-        if (!currentUser.isAdmin()) {
-            result.setSuccess(false);
-            result.setMessage("Only HR administrators can search employees by date of birth");
-            return result;
-        }
-        
-        // Validate date
-        if (dob == null) {
-            result.setSuccess(false);
-            result.setMessage("Please provide a valid date of birth");
-            return result;
-        }
-        
-        // Perform search
-        List<Employee> employees = employeeDAO.findByDOB(dob);
-        
-        result.setSuccess(true);
-        result.setEmployees(employees);
-        result.setMessage("Found " + employees.size() + " employee(s) with DOB: " + dob);
-        
-        return result;
-    }
-    
-    /**
-     * Get all employees (for HR Admin only)
-     * @param currentUser The current logged-in user
-     * @return SearchResult containing all employees
-     */
-    public SearchResult getAllEmployees(User currentUser) {
-        SearchResult result = new SearchResult();
-        
-        // Validate user authentication and authorization
-        if (currentUser == null || !currentUser.isLoggedIn()) {
-            result.setSuccess(false);
-            result.setMessage("User must be logged in to view employees");
-            return result;
-        }
-        
-        if (!currentUser.isAdmin()) {
-            result.setSuccess(false);
-            result.setMessage("Only HR administrators can view all employees");
-            return result;
-        }
-        
-        // Get all employees
-        List<Employee> employees = employeeDAO.findAll();
-        
-        result.setSuccess(true);
-        result.setEmployees(employees);
-        result.setMessage("Retrieved " + employees.size() + " employee(s)");
-        
-        return result;
-    }
-    
-    /**
-     * Validate employee data for business rules
-     * @param employee The employee to validate
-     * @return ValidationResult with success status and messages
-     */
-    public ValidationResult validateEmployeeData(Employee employee) {
-        ValidationResult result = new ValidationResult();
-        
-        if (employee == null) {
-            result.addError("Employee cannot be null");
-            return result;
-        }
-        
-        // Validate basic employee data
-        if (!employee.isValid()) {
-            result.addError("Employee data is incomplete or invalid");
-        }
-        
-        // Validate salary range
-        if (employee.getBaseSalary() != null) {
-            if (employee.getBaseSalary().compareTo(MIN_SALARY) < 0) {
-                result.addError("Salary cannot be less than " + MIN_SALARY);
-            }
-            if (employee.getBaseSalary().compareTo(MAX_SALARY) > 0) {
-                result.addError("Salary cannot exceed " + MAX_SALARY);
-            }
-        }
-        
-        // Validate age
-        if (employee.getDob() != null) {
-            int age = employee.getAge();
-            if (age < MIN_AGE) {
-                result.addError("Employee must be at least " + MIN_AGE + " years old");
-            }
-            if (age > MAX_AGE) {
-                result.addError("Employee age cannot exceed " + MAX_AGE + " years");
-            }
-        }
-        
-        // Validate hire date
-        if (employee.getHireDate() != null && employee.getHireDate().isAfter(LocalDate.now())) {
-            result.addError("Hire date cannot be in the future");
-        }
-        
-        // Validate email format
-        if (employee.getEmail() != null && !employee.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-            result.addError("Invalid email format");
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Perform admin search (unrestricted)
-     */
-    private SearchResult performAdminSearch(SearchCriteria searchCriteria, SearchResult result) {
-        if (searchCriteria == null || searchCriteria.isEmpty()) {
-            // Return all employees if no criteria provided
-            List<Employee> employees = employeeDAO.findAll();
-            result.setSuccess(true);
-            result.setEmployees(employees);
-            result.setMessage("Retrieved " + employees.size() + " employee(s)");
-        } else {
-            // Perform filtered search
-            List<Employee> employees = employeeDAO.searchEmployees(searchCriteria);
-            result.setSuccess(true);
-            result.setEmployees(employees);
-            result.setMessage("Found " + employees.size() + " matching employee(s)");
-        }
-        return result;
-    }
-    
-    /**
-     * Perform employee search (restricted to own data)
-     */
-    private SearchResult performEmployeeSearch(int empid, SearchResult result) {
-        Optional<Employee> employee = employeeDAO.findById(empid);
-        
-        if (employee.isPresent()) {
-            List<Employee> employees = new ArrayList<>();
-            employees.add(employee.get());
-            result.setSuccess(true);
-            result.setEmployees(employees);
-            result.setMessage("Your employee record");
-        } else {
-            result.setSuccess(false);
-            result.setMessage("Your employee record not found");
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Result class for search operations
-     */
+
+    /*
+        Small helper "result" type so we can return:
+        - success flag
+        - message (for the UI to show)
+        - list of employees (if any)
+
+        This makes the console UI and JavaFX code a lot cleaner.
+    */
     public static class SearchResult {
-        private boolean success;
-        private String message;
-        private List<Employee> employees;
-        
-        public SearchResult() {
-            this.employees = new ArrayList<>();
+        private final boolean success;
+        private final String message;
+        private final List<Employee> employees;
+
+        public SearchResult(boolean success, String message, List<Employee> list) {
+            this.success = success;
+            this.message = message;
+            // make sure we never return null lists to the UI
+            this.employees = (list != null) ? list : new ArrayList<>();
         }
-        
+
         public boolean isSuccess() { return success; }
-        public void setSuccess(boolean success) { this.success = success; }
-        
         public String getMessage() { return message; }
-        public void setMessage(String message) { this.message = message; }
-        
         public List<Employee> getEmployees() { return employees; }
-        public void setEmployees(List<Employee> employees) { 
-            this.employees = employees != null ? employees : new ArrayList<>(); 
-        }
-        
         public int getCount() { return employees.size(); }
     }
-    
-    /**
-     * Result class for validation operations
-     */
-    public static class ValidationResult {
-        private boolean isValid = true;
-        private StringBuilder errors = new StringBuilder();
-        
-        public void addError(String error) {
-            isValid = false;
-            if (errors.length() > 0) {
-                errors.append("; ");
+
+    // ---------------------------
+    // BASIC SEARCH OPERATIONS
+    // ---------------------------
+
+    // search by ID, with permission check
+    public SearchResult searchEmployeeById(int empid, User user) {
+        try {
+            var result = employeeDAO.findById(empid);
+
+            if (result.isPresent()) {
+                Employee emp = result.get();
+
+                // regular employees can only see themselves, admins see everyone
+                if (!user.isAdmin() && user.getEmpid() != emp.getEmpid()) {
+                    return new SearchResult(false, "You do not have permission to view this employee.", null);
+                }
+
+                List<Employee> list = new ArrayList<>();
+                list.add(emp);
+                return new SearchResult(true, "Employee found.", list);
+            } else {
+                return new SearchResult(false, "No employee found with ID " + empid, null);
             }
-            errors.append(error);
+
+        } catch (Exception e) {
+            // we swallow exception details here and push a friendly message up to UI
+            return new SearchResult(false, "Error searching by ID: " + e.getMessage(), null);
         }
-        
-        public boolean isValid() { return isValid; }
-        
-        public String getErrors() { return errors.toString(); }
+    }
+
+    // search by first/last name
+    public SearchResult searchByName(String first, String last, User user) {
+        try {
+            var list = employeeDAO.findByName(first, last);
+
+            // non-admins should never see other people in the list
+            if (!user.isAdmin()) {
+                list.removeIf(e -> e.getEmpid() != user.getEmpid());
+            }
+
+            return new SearchResult(true, "Search complete.", list);
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error searching by name: " + e.getMessage(), null);
+        }
+    }
+
+    // search by SSN (very restricted)
+    public SearchResult searchBySSN(String ssn, User user) {
+        try {
+            var result = employeeDAO.findBySSN(ssn);
+
+            if (result.isPresent()) {
+                Employee emp = result.get();
+
+                // only admins or the same employee can see SSN-related info
+                if (!user.isAdmin() && emp.getEmpid() != user.getEmpid()) {
+                    return new SearchResult(false, "You cannot view another employee's SSN.", null);
+                }
+
+                List<Employee> list = new ArrayList<>();
+                list.add(emp);
+                return new SearchResult(true, "Employee found.", list);
+            }
+
+            return new SearchResult(false, "No employee found with SSN " + ssn, null);
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error searching by SSN: " + e.getMessage(), null);
+        }
+    }
+
+    // load all employees in the system (or just "self" if not admin)
+    public SearchResult getAllEmployees(User user) {
+        try {
+            var list = employeeDAO.findAll();
+
+            if (!user.isAdmin()) {
+                // normal employees only get themselves in the list
+                list.removeIf(e -> e.getEmpid() != user.getEmpid());
+            }
+
+            return new SearchResult(true, "Employee list retrieved.", list);
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error retrieving employees: " + e.getMessage(), null);
+        }
+    }
+
+    // ---------------------------
+    // INSERT / UPDATE OPERATIONS
+    // ---------------------------
+
+    // create a new employee row (admin only)
+    public SearchResult addEmployee(Employee emp, User user) {
+        if (!user.isAdmin()) {
+            return new SearchResult(false, "Only HR Admins can add employees.", null);
+        }
+
+        try {
+            boolean ok = employeeDAO.save(emp);
+            if (ok) {
+                List<Employee> list = new ArrayList<>();
+                list.add(emp);
+                return new SearchResult(true, "Employee added successfully.", list);
+            } else {
+                return new SearchResult(false, "Failed to save employee.", null);
+            }
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error adding employee: " + e.getMessage(), null);
+        }
+    }
+
+    // update an existing employee row (admin only)
+    public SearchResult updateEmployee(Employee emp, User user) {
+        if (!user.isAdmin()) {
+            return new SearchResult(false, "Only HR Admins can update employees.", null);
+        }
+
+        try {
+            boolean ok = employeeDAO.update(emp);
+
+            if (ok) {
+                List<Employee> list = new ArrayList<>();
+                list.add(emp);
+                return new SearchResult(true, "Employee updated.", list);
+            } else {
+                return new SearchResult(false, "Failed to update employee.", null);
+            }
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error updating employee: " + e.getMessage(), null);
+        }
+    }
+
+    // delete an employee row (hard delete in this schema)
+    public SearchResult deleteEmployee(int empid, User user) {
+        if (!user.isAdmin()) {
+            return new SearchResult(false, "Only HR Admins can delete employees.", null);
+        }
+
+        try {
+            boolean ok = employeeDAO.delete(empid);
+
+            if (ok) {
+                return new SearchResult(true, "Employee deleted.", null);
+            } else {
+                return new SearchResult(false, "Could not delete employee.", null);
+            }
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error deleting employee: " + e.getMessage(), null);
+        }
+    }
+
+    // ---------------------------
+    // SALARY FEATURES
+    // ---------------------------
+
+    // batch raise for everyone in a certain salary bracket
+    public SearchResult updateSalaryRange(double percentage, double min, double max, User user) {
+        if (!user.isAdmin()) {
+            return new SearchResult(false, "Only HR Admins can modify salaries.", null);
+        }
+
+        try {
+            int updated = employeeDAO.updateSalaryByRange(percentage, min, max);
+            return new SearchResult(true, updated + " employees updated.", null);
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error updating salaries: " + e.getMessage(), null);
+        }
     }
 }
