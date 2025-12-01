@@ -8,12 +8,9 @@ import java.util.List;
 
 /*
     EmployeeService
-
-    This sits between the UI layer (JavaFX / console) and the DAO.
-    - UI should talk to this class instead of hitting EmployeeDAO directly.
-    - We do permission checks here using the User object.
-    - We also wrap results into a SearchResult so the UI can show messages
-      without needing to catch a bunch of exceptions.
+    ---------------
+    This sits between the UI and the DAO.
+    All permission checks and “nice” messages live here.
 */
 public class EmployeeService {
 
@@ -23,14 +20,7 @@ public class EmployeeService {
         this.employeeDAO = new EmployeeDAO();
     }
 
-    /*
-        Small helper "result" type so we can return:
-        - success flag
-        - message (for the UI to show)
-        - list of employees (if any)
-
-        This makes the console UI and JavaFX code a lot cleaner.
-    */
+    // small helper wrapper so the UI can get status + message + list
     public static class SearchResult {
         private final boolean success;
         private final String message;
@@ -39,7 +29,6 @@ public class EmployeeService {
         public SearchResult(boolean success, String message, List<Employee> list) {
             this.success = success;
             this.message = message;
-            // make sure we never return null lists to the UI
             this.employees = (list != null) ? list : new ArrayList<>();
         }
 
@@ -49,11 +38,7 @@ public class EmployeeService {
         public int getCount() { return employees.size(); }
     }
 
-    // ---------------------------
-    // BASIC SEARCH OPERATIONS
-    // ---------------------------
-
-    // search by ID, with permission check
+    // search by employee ID (with permission check)
     public SearchResult searchEmployeeById(int empid, User user) {
         try {
             var result = employeeDAO.findById(empid);
@@ -61,7 +46,7 @@ public class EmployeeService {
             if (result.isPresent()) {
                 Employee emp = result.get();
 
-                // regular employees can only see themselves, admins see everyone
+                // only admins or the same employee can view this record
                 if (!user.isAdmin() && user.getEmpid() != emp.getEmpid()) {
                     return new SearchResult(false, "You do not have permission to view this employee.", null);
                 }
@@ -69,22 +54,21 @@ public class EmployeeService {
                 List<Employee> list = new ArrayList<>();
                 list.add(emp);
                 return new SearchResult(true, "Employee found.", list);
-            } else {
-                return new SearchResult(false, "No employee found with ID " + empid, null);
             }
 
+            return new SearchResult(false, "No employee found with ID " + empid, null);
+
         } catch (Exception e) {
-            // we swallow exception details here and push a friendly message up to UI
             return new SearchResult(false, "Error searching by ID: " + e.getMessage(), null);
         }
     }
 
-    // search by first/last name
+    // search by first and/or last name
     public SearchResult searchByName(String first, String last, User user) {
         try {
             var list = employeeDAO.findByName(first, last);
 
-            // non-admins should never see other people in the list
+            // non-admins should only see themselves
             if (!user.isAdmin()) {
                 list.removeIf(e -> e.getEmpid() != user.getEmpid());
             }
@@ -104,7 +88,6 @@ public class EmployeeService {
             if (result.isPresent()) {
                 Employee emp = result.get();
 
-                // only admins or the same employee can see SSN-related info
                 if (!user.isAdmin() && emp.getEmpid() != user.getEmpid()) {
                     return new SearchResult(false, "You cannot view another employee's SSN.", null);
                 }
@@ -114,35 +97,30 @@ public class EmployeeService {
                 return new SearchResult(true, "Employee found.", list);
             }
 
-            return new SearchResult(false, "No employee found with SSN " + ssn, null);
+            return new SearchResult(false, "No employee found with that SSN.", null);
 
         } catch (Exception e) {
             return new SearchResult(false, "Error searching by SSN: " + e.getMessage(), null);
         }
     }
 
-    // load all employees in the system (or just "self" if not admin)
+    // get all employees (admins see everyone, others only see themselves)
     public SearchResult getAllEmployees(User user) {
         try {
             var list = employeeDAO.findAll();
 
             if (!user.isAdmin()) {
-                // normal employees only get themselves in the list
                 list.removeIf(e -> e.getEmpid() != user.getEmpid());
             }
 
-            return new SearchResult(true, "Employee list retrieved.", list);
+            return new SearchResult(true, "Employee list loaded.", list);
 
         } catch (Exception e) {
-            return new SearchResult(false, "Error retrieving employees: " + e.getMessage(), null);
+            return new SearchResult(false, "Error loading employees: " + e.getMessage(), null);
         }
     }
 
-    // ---------------------------
-    // INSERT / UPDATE OPERATIONS
-    // ---------------------------
-
-    // create a new employee row (admin only)
+    // add a new employee (admins only)
     public SearchResult addEmployee(Employee emp, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can add employees.", null);
@@ -163,7 +141,7 @@ public class EmployeeService {
         }
     }
 
-    // update an existing employee row (admin only)
+    // update an existing employee (admins only)
     public SearchResult updateEmployee(Employee emp, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can update employees.", null);
@@ -171,7 +149,6 @@ public class EmployeeService {
 
         try {
             boolean ok = employeeDAO.update(emp);
-
             if (ok) {
                 List<Employee> list = new ArrayList<>();
                 list.add(emp);
@@ -185,7 +162,7 @@ public class EmployeeService {
         }
     }
 
-    // delete an employee row (hard delete in this schema)
+    // delete an employee (admins only)
     public SearchResult deleteEmployee(int empid, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can delete employees.", null);
@@ -193,7 +170,6 @@ public class EmployeeService {
 
         try {
             boolean ok = employeeDAO.delete(empid);
-
             if (ok) {
                 return new SearchResult(true, "Employee deleted.", null);
             } else {
@@ -205,18 +181,14 @@ public class EmployeeService {
         }
     }
 
-    // ---------------------------
-    // SALARY FEATURES
-    // ---------------------------
-
-    // batch raise for everyone in a certain salary bracket
-    public SearchResult updateSalaryRange(double percentage, double min, double max, User user) {
+    // salary update for a given salary band (used by Salary Tools screen)
+    public SearchResult updateSalaryRange(double percent, double min, double max, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can modify salaries.", null);
         }
 
         try {
-            int updated = employeeDAO.updateSalaryByRange(percentage, min, max);
+            int updated = employeeDAO.updateSalaryByRange(percent, min, max);
             return new SearchResult(true, updated + " employees updated.", null);
 
         } catch (Exception e) {
