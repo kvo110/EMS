@@ -1,4 +1,3 @@
-// SearchBar.java (cleaned + reliable real-time search)
 package com.employeemgmt.ui.fx.components;
 
 import javafx.geometry.Insets;
@@ -12,7 +11,7 @@ public class SearchBar {
     private final TextField field = new TextField();
     private final Button searchBtn = new Button("Search");
 
-    // callback for whatever screen uses this
+    // callback for the screen that owns this search bar
     public interface SearchAction {
         void execute(String query);
     }
@@ -22,17 +21,24 @@ public class SearchBar {
     public SearchBar() {
         field.setPromptText("Search employees...");
 
-        // real-time search (only when at least 1 character is typed)
+        // real-time search when typing (ignores blank strings)
         field.textProperty().addListener((obs, oldV, newV) -> {
             if (action != null) {
                 String q = newV.trim();
-                if (!q.isEmpty()) action.execute(q);
+                if (!q.isEmpty()) {
+                    action.execute(q);
+                } else {
+                    // if you clear the box, caller gets an empty string
+                    action.execute("");
+                }
             }
         });
 
         // manual search button
         searchBtn.setOnAction(e -> {
-            if (action != null) action.execute(field.getText().trim());
+            if (action != null) {
+                action.execute(field.getText().trim());
+            }
         });
     }
 
@@ -42,7 +48,9 @@ public class SearchBar {
 
     // lets parent screen force a refresh
     public void triggerRefresh() {
-        if (action != null) action.execute(field.getText().trim());
+        if (action != null) {
+            action.execute(field.getText().trim());
+        }
     }
 
     public Node getNode() {

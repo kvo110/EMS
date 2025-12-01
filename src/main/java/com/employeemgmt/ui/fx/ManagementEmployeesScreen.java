@@ -11,8 +11,11 @@ import com.employeemgmt.ui.fx.components.SearchBar;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 public class ManagementEmployeesScreen {
@@ -38,15 +41,20 @@ public class ManagementEmployeesScreen {
         Label status = new Label("");
         status.setStyle("-fx-text-fill: green;");
 
-        // search employees by first or last name
+        // search employees by first or last name (works with new SearchBar behavior)
         search.setSearchAction(query -> {
-            if (query.isBlank()) {
-                table.update(java.util.List.of());
-                status.setText("Enter a name to search.");
+            String q = query.trim();
+
+            // when the box is empty, show everything
+            if (q.isEmpty()) {
+                SearchResult all = employeeService.getAllEmployees(adminUser);
+                table.update(all.getEmployees());
+                status.setText("Showing all employees (" + all.getCount() + ")");
                 return;
             }
 
-            SearchResult r = employeeService.searchByName(query, query, adminUser);
+            // otherwise filter by name
+            SearchResult r = employeeService.searchByName(q, q, adminUser);
             table.update(r.getEmployees());
             status.setText("Matches: " + r.getCount());
         });
@@ -88,7 +96,7 @@ public class ManagementEmployeesScreen {
                 form.clear();
 
                 // reload table so new employee shows instantly
-                var reload = employeeService.getAllEmployees(adminUser);
+                SearchResult reload = employeeService.getAllEmployees(adminUser);
                 table.update(reload.getEmployees());
                 status.setText("Loaded " + reload.getCount() + " employees.");
                 return;
@@ -109,7 +117,10 @@ public class ManagementEmployeesScreen {
             SearchResult r = employeeService.deleteEmployee(id, adminUser);
             status.setText(r.getMessage());
             form.clear();
-            search.triggerRefresh();
+
+            // after delete, reload the full list
+            SearchResult reload = employeeService.getAllEmployees(adminUser);
+            table.update(reload.getEmployees());
         });
 
         // clear only the input fields
@@ -117,12 +128,13 @@ public class ManagementEmployeesScreen {
 
         // reload every employee in the database
         resetDBBtn.setOnAction(e -> {
-            var r = employeeService.getAllEmployees(adminUser);
+            SearchResult r = employeeService.getAllEmployees(adminUser);
             table.update(r.getEmployees());
             status.setText("Showing all employees (" + r.getCount() + ")");
         });
 
-        VBox rightPanel = new VBox(10,
+        VBox rightPanel = new VBox(
+                10,
                 form.getNode(),
                 saveBtn,
                 deleteBtn,
@@ -154,7 +166,7 @@ public class ManagementEmployeesScreen {
         stage.show();
 
         // load all employees when the screen opens
-        var load = employeeService.getAllEmployees(adminUser);
+        SearchResult load = employeeService.getAllEmployees(adminUser);
         table.update(load.getEmployees());
         status.setText("Loaded " + load.getCount() + " employees.");
     }
