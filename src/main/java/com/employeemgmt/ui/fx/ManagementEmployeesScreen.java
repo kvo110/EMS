@@ -38,7 +38,7 @@ public class ManagementEmployeesScreen {
         Label status = new Label("");
         status.setStyle("-fx-text-fill: green;");
 
-        // real-time search behavior
+        // unified search: ID, name, DOB, SSN, email
         search.setSearchAction(query -> {
             String q = query.trim();
 
@@ -49,13 +49,16 @@ public class ManagementEmployeesScreen {
                 return;
             }
 
-            SearchResult r = employeeService.searchByName(q, q, adminUser);
+            SearchResult r = employeeService.searchAllFields(q, adminUser);
             table.update(r.getEmployees());
             status.setText("Matches: " + r.getCount());
         });
 
+        // clicking a row fills the form with that employee’s info
         table.setOnRowSelected(emp -> {
-            if (emp != null) form.loadEmployee(emp);
+            if (emp != null) {
+                form.loadEmployee(emp);
+            }
         });
 
         Button saveBtn = new Button("Save");
@@ -64,9 +67,10 @@ public class ManagementEmployeesScreen {
         Button resetDBBtn = new Button("Reset View");
         Button backBtn = new Button("Back to Dashboard");
 
-        // save button
+        // save new employee or update existing one
         saveBtn.setOnAction(e -> {
             Employee emp = form.buildEmployeeFromFields();
+
             if (emp == null) {
                 status.setText("Please fill out fields correctly.");
                 return;
@@ -77,13 +81,17 @@ public class ManagementEmployeesScreen {
                     ? employeeService.updateEmployee(emp, adminUser)
                     : employeeService.addEmployee(emp, adminUser);
 
+            // popup only on successful save
             if (r.isSuccess()) {
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setHeaderText(null);
                 alert.setContentText("Employee saved successfully.");
                 alert.showAndWait();
 
+                // clear form so admin can add the next person
                 form.clear();
+
+                // reload table so new employee shows instantly
                 var reload = employeeService.getAllEmployees(adminUser);
                 table.update(reload.getEmployees());
                 status.setText("Loaded " + reload.getCount() + " employees.");
@@ -96,6 +104,7 @@ public class ManagementEmployeesScreen {
         // delete employee
         deleteBtn.setOnAction(e -> {
             Integer id = form.getLoadedEmployeeId();
+
             if (id == null) {
                 status.setText("Select an employee to delete.");
                 return;
@@ -109,17 +118,17 @@ public class ManagementEmployeesScreen {
             table.update(reload.getEmployees());
         });
 
-        // clear input fields
+        // clear only the input fields
         clearBtn.setOnAction(e -> form.clear());
 
-        // reload everything
+        // reload every employee in the database
         resetDBBtn.setOnAction(e -> {
             var r = employeeService.getAllEmployees(adminUser);
             table.update(r.getEmployees());
             status.setText("Showing all employees (" + r.getCount() + ")");
         });
 
-        // go back to dashboard
+        // go back to the main admin dashboard
         backBtn.setOnAction(e -> {
             stage.close();
             new AdminDashboard().start(new Stage(), adminUser);
@@ -157,6 +166,7 @@ public class ManagementEmployeesScreen {
         stage.setScene(scene);
         stage.show();
 
+        // load all employees when the screen opens
         var load = employeeService.getAllEmployees(adminUser);
         table.update(load.getEmployees());
         status.setText("Loaded " + load.getCount() + " employees.");

@@ -10,7 +10,7 @@ import java.util.List;
     EmployeeService
     ---------------
     This sits between the UI and the DAO.
-    All permission checks and “nice” messages live here.
+    All permission checks and friendly messages live here.
 */
 public class EmployeeService {
 
@@ -63,7 +63,7 @@ public class EmployeeService {
         }
     }
 
-    // search by first and/or last name
+    // search by first and/or last name (still here for other screens/tests)
     public SearchResult searchByName(String first, String last, User user) {
         try {
             var list = employeeDAO.findByName(first, last);
@@ -194,5 +194,51 @@ public class EmployeeService {
         } catch (Exception e) {
             return new SearchResult(false, "Error updating salaries: " + e.getMessage(), null);
         }
+    }
+
+    // ---------------------------------------------------
+    // Unified search for search bar (ID, name, DOB, SSN, etc.)
+    // ---------------------------------------------------
+    public SearchResult searchAllFields(String query, User user) {
+        String q = query.trim().toLowerCase();
+
+        // grab everyone first, then filter in memory
+        var list = employeeDAO.findAll();
+
+        // needs to be effectively final for the lambda
+        final String qLower = q;
+
+        list.removeIf(e -> {
+            boolean match = false;
+
+            // by empid
+            if (String.valueOf(e.getEmpid()).contains(qLower)) match = true;
+
+            // by first/last name
+            if (e.getFirstName() != null &&
+                    e.getFirstName().toLowerCase().contains(qLower)) match = true;
+            if (e.getLastName() != null &&
+                    e.getLastName().toLowerCase().contains(qLower)) match = true;
+
+            // by SSN
+            if (e.getSsn() != null &&
+                    e.getSsn().toLowerCase().contains(qLower)) match = true;
+
+            // by DOB (stored on the model, formatted as yyyy-MM-dd)
+            if (e.getDob() != null &&
+                    e.getDob().toString().contains(qLower)) match = true;
+
+            // you can also match email if you want more hits
+            if (e.getEmail() != null &&
+                    e.getEmail().toLowerCase().contains(qLower)) match = true;
+
+            return !match;
+        });
+
+        if (!user.isAdmin()) {
+            list.removeIf(e -> e.getEmpid() != user.getEmpid());
+        }
+
+        return new SearchResult(true, "Unified search complete.", list);
     }
 }
