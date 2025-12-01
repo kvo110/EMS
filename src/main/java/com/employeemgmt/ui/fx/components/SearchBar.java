@@ -2,65 +2,54 @@ package com.employeemgmt.ui.fx.components;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 
-/*
-   SearchBar
-   Small search panel used by ManagementEmployeesScreen.
+import java.util.function.Consumer;
 
-   Supports:
-   - search by ID
-   - search by first/last name
-   - show all
-*/
-public class SearchBar extends VBox {
+// Small reusable search bar component
+// Just wraps a TextField + a Search button
+public class SearchBar {
 
-    private final TextField idField = new TextField();
-    private final TextField firstNameField = new TextField();
-    private final TextField lastNameField = new TextField();
+    private final TextField queryField;
+    private final Button searchButton;
 
-    private final Button searchButton = new Button("Search");
-    private final Button showAllButton = new Button("Show All");
+    private Consumer<String> searchHandler;
 
-    public SearchBar() {
-        Label label = new Label("Search Employees");
-        label.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+    public SearchBar(String placeholder) {
+        queryField = new TextField();
+        queryField.setPromptText(placeholder);
 
-        idField.setPromptText("ID");
-        idField.setPrefWidth(80);
+        searchButton = new Button("Search");
 
-        firstNameField.setPromptText("First name");
-        lastNameField.setPromptText("Last name");
-
-        HBox row = new HBox(8, idField, firstNameField, lastNameField, searchButton, showAllButton);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        setSpacing(6);
-        setPadding(new Insets(10));
-        getChildren().addAll(label, row);
+        searchButton.setOnAction(e -> performSearch());
+        queryField.setOnAction(e -> performSearch());
     }
 
-    public String getIdText() {
-        return idField.getText();
+    private void performSearch() {
+        if (searchHandler != null) {
+            searchHandler.accept(queryField.getText());
+        }
     }
 
-    public String getFirstNameText() {
-        return firstNameField.getText();
+    // Called by screens to wire up the actual search logic
+    public void setOnSearch(Consumer<String> handler) {
+        this.searchHandler = handler;
     }
 
-    public String getLastNameText() {
-        return lastNameField.getText();
+    // Handy to trigger an initial "load all" search
+    public void triggerInitialSearch() {
+        if (searchHandler != null) {
+            searchHandler.accept("");
+        }
     }
 
-    public Button getSearchButton() {
-        return searchButton;
-    }
-
-    public Button getShowAllButton() {
-        return showAllButton;
+    public Node getNode() {
+        HBox box = new HBox(8, queryField, searchButton);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setPadding(new Insets(0, 0, 5, 0));
+        return box;
     }
 }

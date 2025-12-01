@@ -10,22 +10,14 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-/*
-   RegisterScreen
-   Simple account creation form.
-
-   Fields:
-   - username
-   - password + confirm
-   - role (Admin / Employee)
-   - Employee ID only required for Employee role
-*/
+// Basic "Create Account" screen.
+// Admin accounts do NOT need an Employee ID.
+// Employee accounts MUST be linked to an existing empid row.
 public class RegisterScreen {
 
     private final AuthenticationService authService = new AuthenticationService();
 
     public void start(Stage stage) {
-
         Label title = new Label("Create New Account");
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
@@ -43,17 +35,18 @@ public class RegisterScreen {
         roleBox.setValue("Employee");
 
         TextField empIdField = new TextField();
-        empIdField.setPromptText("Employee ID (required for Employee role)");
+        empIdField.setPromptText("Employee ID (required for Employee)");
 
         Label message = new Label();
         message.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
 
         Button createBtn = new Button("Create Account");
-        createBtn.setPrefWidth(180);
+        createBtn.setPrefWidth(200);
 
         Button backBtn = new Button("Back to Login");
-        backBtn.setPrefWidth(180);
+        backBtn.setPrefWidth(200);
 
+        // Actually create the account
         createBtn.setOnAction(e -> {
             String username = usernameField.getText().trim();
             String password = passwordField.getText().trim();
@@ -62,7 +55,7 @@ public class RegisterScreen {
             String empIdText = empIdField.getText().trim();
 
             if (username.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
-                message.setText("Please fill out all required fields.");
+                message.setText("Please fill out username and password fields.");
                 return;
             }
 
@@ -78,6 +71,7 @@ public class RegisterScreen {
 
             UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.EMPLOYEE;
 
+            // For Employee role, we require an existing empid
             Integer empid = null;
             if (role == UserRole.EMPLOYEE) {
                 if (empIdText.isEmpty()) {
@@ -87,13 +81,12 @@ public class RegisterScreen {
                 try {
                     empid = Integer.parseInt(empIdText);
                 } catch (NumberFormatException ex) {
-                    message.setText("Employee ID must be a number.");
+                    message.setText("Employee ID must be a valid number.");
                     return;
                 }
             }
 
-            UserCreationResult result =
-                    authService.createUser(username, password, role, empid);
+            UserCreationResult result = authService.createUser(username, password, role, empid);
 
             if (!result.isSuccess()) {
                 message.setText(result.getMessage());
@@ -115,7 +108,7 @@ public class RegisterScreen {
             new LoginScreen().start(new Stage());
         });
 
-        VBox layout = new VBox(
+        VBox root = new VBox(
                 10,
                 title,
                 usernameField,
@@ -127,11 +120,11 @@ public class RegisterScreen {
                 backBtn,
                 message
         );
-        layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(25));
-        layout.setStyle("-fx-background-color: #f7faff;");
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(25));
+        root.setStyle("-fx-background-color: #f7faff;");
 
-        Scene scene = new Scene(layout, 450, 420);
+        Scene scene = new Scene(root, 450, 420);
         stage.setTitle("Register");
         stage.setScene(scene);
         stage.show();

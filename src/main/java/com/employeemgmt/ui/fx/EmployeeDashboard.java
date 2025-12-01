@@ -13,10 +13,8 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-/*
-   EmployeeDashboard
-   Simple home screen for regular employees.
-*/
+// Simple screen for normal employees.
+// They can see their own profile pulled from the database.
 public class EmployeeDashboard {
 
     private final EmployeeService employeeService = new EmployeeService();
@@ -35,14 +33,13 @@ public class EmployeeDashboard {
         profileArea.setEditable(false);
         profileArea.setPrefRowCount(8);
 
-        Button refreshProfileBtn = new Button("Refresh My Profile");
+        Button refreshBtn = new Button("Refresh My Profile");
         Button logoutBtn = new Button("Logout");
 
-        refreshProfileBtn.setOnAction(e -> {
+        refreshBtn.setOnAction(e -> {
             SearchResult result = employeeService.searchEmployeeById(user.getEmpid(), user);
-
             if (!result.isSuccess() || result.getEmployees().isEmpty()) {
-                profileArea.setText("Could not load your employee profile.\n" + result.getMessage());
+                profileArea.setText("Could not load your profile.\n" + result.getMessage());
                 return;
             }
 
@@ -61,22 +58,23 @@ public class EmployeeDashboard {
             new LoginScreen().start(new Stage());
         });
 
-        VBox layout = new VBox(
+        VBox root = new VBox(
                 12,
                 title,
                 profileArea,
-                refreshProfileBtn,
+                refreshBtn,
                 logoutBtn
         );
-        layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(25));
-        layout.setStyle("-fx-background-color: #f5f9ff;");
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(25));
+        root.setStyle("-fx-background-color: #f5f9ff;");
 
-        Scene scene = new Scene(layout, 520, 380);
+        Scene scene = new Scene(root, 520, 380);
         stage.setTitle("Employee Dashboard");
         stage.setScene(scene);
         stage.show();
 
-        refreshProfileBtn.fire();
+        // Auto-load once so the screen isn't empty
+        refreshBtn.fire();
     }
 }

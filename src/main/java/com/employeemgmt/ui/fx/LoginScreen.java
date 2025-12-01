@@ -10,21 +10,13 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-/*
-   LoginScreen
-   Main login page for the JavaFX EMS app.
-
-   Features:
-   - Username + password
-   - Role selection hint (Admin vs Employee)
-   - Register button that opens RegisterScreen
-*/
+// Simple login window for the EMS app.
+// Uses AuthenticationService to check username/password.
 public class LoginScreen {
 
     private final AuthenticationService authService = new AuthenticationService();
 
     public void start(Stage stage) {
-
         Label title = new Label("Employee Management System");
         title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
 
@@ -34,24 +26,25 @@ public class LoginScreen {
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Password");
 
-        ComboBox<String> roleSelect = new ComboBox<>();
-        roleSelect.getItems().addAll("Employee", "Admin");
-        roleSelect.setValue("Employee");
-        roleSelect.setPrefWidth(180);
-
-        Button loginBtn = new Button("Login");
-        loginBtn.setPrefWidth(180);
-
-        Button registerBtn = new Button("Register");
-        registerBtn.setPrefWidth(180);
+        // Just a small hint for the user about what they intend
+        ComboBox<String> roleBox = new ComboBox<>();
+        roleBox.getItems().addAll("Employee", "Admin");
+        roleBox.setValue("Employee");
 
         Label message = new Label();
         message.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
 
+        Button loginBtn = new Button("Login");
+        loginBtn.setPrefWidth(200);
+
+        Button registerBtn = new Button("Register");
+        registerBtn.setPrefWidth(200);
+
+        // Login button handler
         loginBtn.setOnAction(e -> {
             String username = usernameField.getText().trim();
             String password = passwordField.getText().trim();
-            String pickedRole = roleSelect.getValue();
+            String pickedRole = roleBox.getValue();
 
             if (username.isEmpty() || password.isEmpty()) {
                 message.setText("Please enter both username and password.");
@@ -65,51 +58,49 @@ public class LoginScreen {
                 return;
             }
 
-            User user = result.getUser();
-            if (user == null) {
-                message.setText("Login failed. No user returned.");
-                return;
-            }
+            User loggedIn = result.getUser();
 
-            // light role check just for UX
-            if ("Admin".equals(pickedRole) && !user.isAdmin()) {
+            // Light guard: if user picked "Admin" but is not admin
+            if ("Admin".equals(pickedRole) && !loggedIn.isAdmin()) {
                 message.setText("This account is not an admin.");
                 return;
             }
-            if ("Employee".equals(pickedRole) && user.isAdmin()) {
-                message.setText("This account is an admin. Switch role to Admin.");
+
+            if ("Employee".equals(pickedRole) && loggedIn.isAdmin()) {
+                message.setText("This account is an admin. Pick Admin above.");
                 return;
             }
 
             stage.close();
 
-            if (user.isAdmin()) {
-                new AdminDashboard().start(new Stage(), user);
+            if (loggedIn.isAdmin()) {
+                new AdminDashboard().start(new Stage(), loggedIn);
             } else {
-                new EmployeeDashboard().start(new Stage(), user);
+                new EmployeeDashboard().start(new Stage(), loggedIn);
             }
         });
 
+        // Register goes to the account creation screen
         registerBtn.setOnAction(e -> {
             stage.close();
             new RegisterScreen().start(new Stage());
         });
 
-        VBox layout = new VBox(
+        VBox root = new VBox(
                 12,
                 title,
                 usernameField,
                 passwordField,
-                roleSelect,
+                roleBox,
                 loginBtn,
                 registerBtn,
                 message
         );
-        layout.setAlignment(Pos.CENTER);
-        layout.setPadding(new Insets(35));
-        layout.setStyle("-fx-background-color: #f7faff;");
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(30));
+        root.setStyle("-fx-background-color: #f7faff;");
 
-        Scene scene = new Scene(layout, 420, 380);
+        Scene scene = new Scene(root, 420, 380);
         stage.setTitle("Login");
         stage.setScene(scene);
         stage.show();
