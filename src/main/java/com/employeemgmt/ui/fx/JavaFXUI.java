@@ -4,11 +4,16 @@ import javafx.application.Application;
 import javafx.stage.Stage;
 
 /*
-   Just boots the app on the login screen.
+    JavaFXUI
+    --------
+    Tiny bridge class between JavaFX and our own screens.
+    Main.java launches this, and from here we just open LoginScreen.
 */
 public class JavaFXUI extends Application {
+
     @Override
-    public void start(Stage stage) {
-        new LoginScreen().start(stage);
+    public void start(Stage primaryStage) {
+        // start the app on the login page
+        new LoginScreen().start(primaryStage);
     }
 }

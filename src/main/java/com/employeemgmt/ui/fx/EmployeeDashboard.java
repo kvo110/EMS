@@ -7,19 +7,27 @@ import com.employeemgmt.services.EmployeeService.SearchResult;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /*
-   Employee home page
+    EmployeeDashboard
+    -----------------
+    Simple home screen for regular employees.
+
+    Right now:
+    - shows their own profile pulled from EmployeeService
+    - small button to refresh
+    - logout button
 */
 public class EmployeeDashboard {
 
-    private final EmployeeService service = new EmployeeService();
+    private final EmployeeService employeeService = new EmployeeService();
 
     public void start(Stage stage, User user) {
-
         if (user == null || user.isAdmin()) {
             stage.close();
             new LoginScreen().start(new Stage());
@@ -29,41 +37,53 @@ public class EmployeeDashboard {
         Label title = new Label("Welcome, " + user.getUsername());
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        TextArea view = new TextArea();
-        view.setEditable(false);
+        TextArea profileArea = new TextArea();
+        profileArea.setEditable(false);
+        profileArea.setPrefRowCount(8);
 
-        Button refresh = new Button("Refresh");
-        Button logout = new Button("Logout");
+        Button refreshBtn = new Button("Refresh My Profile");
+        Button logoutBtn = new Button("Logout");
 
-        refresh.setOnAction(e -> {
-            SearchResult r = service.searchEmployeeById(user.getEmpid(), user);
-            if (!r.isSuccess()) {
-                view.setText(r.getMessage());
+        refreshBtn.setOnAction(e -> {
+            SearchResult result = employeeService.searchEmployeeById(user.getEmpid(), user);
+            if (!result.isSuccess() || result.getEmployees().isEmpty()) {
+                profileArea.setText("Could not load your profile.\n" + result.getMessage());
                 return;
             }
 
-            Employee emp = r.getEmployees().get(0);
-            String text =
-                    "Name: " + emp.getFullName() + "\n" +
-                    "Email: " + emp.getEmail() + "\n" +
-                    "Salary: " + emp.getFormattedSalary() + "\n" +
-                    "Hire Date: " + emp.getHireDate();
-            view.setText(text);
+            Employee emp = result.getEmployees().get(0);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Employee ID: ").append(emp.getEmpid()).append("\n");
+            sb.append("Name: ").append(emp.getFullName()).append("\n");
+            sb.append("Email: ").append(emp.getEmail()).append("\n");
+            sb.append("Hire Date: ").append(emp.getHireDate()).append("\n");
+            sb.append("Base Salary: ").append(emp.getFormattedSalary()).append("\n");
+            profileArea.setText(sb.toString());
         });
 
-        logout.setOnAction(e -> {
+        logoutBtn.setOnAction(e -> {
             stage.close();
             new LoginScreen().start(new Stage());
         });
 
-        VBox layout = new VBox(12, title, view, refresh, logout);
-        layout.setPadding(new Insets(20));
+        VBox layout = new VBox(
+                12,
+                title,
+                profileArea,
+                refreshBtn,
+                logoutBtn
+        );
         layout.setAlignment(Pos.CENTER);
+        layout.setPadding(new Insets(25));
+        layout.setStyle("-fx-background-color: #f5f9ff;");
 
-        stage.setScene(new Scene(layout, 500, 420));
+        Scene scene = new Scene(layout, 520, 380);
         stage.setTitle("Employee Dashboard");
+        stage.setScene(scene);
         stage.show();
 
-        refresh.fire();
+        // auto-refresh once on open
+        refreshBtn.fire();
     }
 }

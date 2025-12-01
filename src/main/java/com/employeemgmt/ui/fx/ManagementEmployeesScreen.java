@@ -7,9 +7,6 @@ import com.employeemgmt.services.EmployeeService.SearchResult;
 import com.employeemgmt.ui.fx.components.EmployeeForm;
 import com.employeemgmt.ui.fx.components.EmployeeTable;
 import com.employeemgmt.ui.fx.components.SearchBar;
-
-import java.util.List;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -22,12 +19,19 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.util.List;
+
 /*
- * ManagementEmployeesScreen
- * -------------------------
- * Main CRUD UI for HR admins.
- * Layout: table on the left, form + buttons on the right.
- */
+    ManagementEmployeesScreen
+    -------------------------
+    CRUD UI for HR Admins.
+
+    Layout:
+    - Top: title + search bar
+    - Left: table of employees
+    - Right: editable form + buttons
+    - Bottom: status label
+*/
 public class ManagementEmployeesScreen {
 
     private final EmployeeService employeeService = new EmployeeService();
@@ -39,109 +43,106 @@ public class ManagementEmployeesScreen {
             return;
         }
 
-        Label header = new Label("Employee Management");
-        header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        Label title = new Label("Manage Employees");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        Label hint = new Label("Tip: type an ID or a name, then hit Search. Leave empty and click Show All for full list.");
-        hint.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
-
-        Label status = new Label();
-        status.setStyle("-fx-text-fill: #444; -fx-font-size: 12px;");
-
+        SearchBar searchBar = new SearchBar("Search by name...");
         EmployeeTable table = new EmployeeTable();
         EmployeeForm form = new EmployeeForm();
-        SearchBar search = new SearchBar();
 
-        // search logic
-        search.setSearchAction(query -> {
-            SearchResult sr;
+        Label status = new Label("Ready.");
+        status.setStyle("-fx-text-fill: #444; -fx-font-size: 12px;");
+
+        // hook up search action
+        searchBar.setOnSearch(query -> {
+            SearchResult result;
 
             if (query == null || query.isBlank()) {
-                sr = employeeService.getAllEmployees(adminUser);
-            } else if (query.trim().matches("\\d+")) {
-                int id = Integer.parseInt(query.trim());
-                sr = employeeService.searchEmployeeById(id, adminUser);
+                result = employeeService.getAllEmployees(adminUser);
             } else {
-                String[] parts = query.trim().split("\\s+", 2);
-                String first = parts[0];
-                String last = parts.length > 1 ? parts[1] : "";
-                sr = employeeService.searchByName(first, last, adminUser);
+                // for now we treat the text as both first and last name filter
+                result = employeeService.searchByName(query.trim(), query.trim(), adminUser);
             }
 
-            if (!sr.isSuccess()) {
-                table.update(List.of());
-                status.setText(sr.getMessage());
+            List<Employee> employees = result.getEmployees();
+            table.setEmployees(employees);
+
+            if (result.isSuccess()) {
+                status.setText("Search complete. " + employees.size() + " result(s).");
+            } else {
+                status.setText("Search error: " + result.getMessage());
+            }
+        });
+
+        // table row selection → load into form
+        table.setOnEmployeeSelected(emp -> {
+            if (emp == null) {
+                form.clearForm();
                 return;
             }
-
-            table.update(sr.getEmployees());
-            status.setText("Loaded " + sr.getCount() + " employee(s).");
+            form.loadEmployee(emp);
+            status.setText("Loaded employee ID " + emp.getEmpid() + " into form.");
         });
 
-        // when user clicks a row, load into form
-        table.setOnRowSelected(emp -> {
-            if (emp == null) {
-                form.clear();
-                status.setText("Selection cleared.");
-            } else {
-                form.loadEmployee(emp);
-                status.setText("Loaded employee " + emp.getEmpid() + " into form.");
-            }
-        });
-
-        Button saveBtn = new Button("Save / Update");
+        // form action buttons
+        Button newBtn = new Button("New");
+        Button saveBtn = new Button("Save");
         Button deleteBtn = new Button("Delete");
-        Button clearBtn = new Button("Clear Form");
-        Button backBtn = new Button("Back");
+        Button backBtn = new Button("Back to Admin");
 
-        saveBtn.setPrefWidth(130);
-        deleteBtn.setPrefWidth(130);
-        clearBtn.setPrefWidth(130);
-        backBtn.setPrefWidth(130);
+        newBtn.setOnAction(e -> {
+            form.clearForm();
+            status.setText("Form cleared. You can enter a new employee.");
+        });
 
         saveBtn.setOnAction(e -> {
-            Employee emp = form.buildEmployeeFromFields();
-            if (!emp.isValid()) {
-                status.setText("Please fill in all required fields (first name, last name, email, hire date, salary).");
-                return;
-            }
+            try {
+                Employee emp = form.buildEmployeeFromForm();
 
-            SearchResult sr;
-            if (emp.getEmpid() == 0) {
-                sr = employeeService.addEmployee(emp, adminUser);
-            } else {
-                sr = employeeService.updateEmployee(emp, adminUser);
-            }
-
-            status.setText(sr.getMessage());
-            if (sr.isSuccess()) {
-                search.triggerRefresh();
-                if (emp.getEmpid() == 0) {
-                    form.clear();
-                } else {
-                    form.loadEmployee(emp);
+                if (!emp.isValid()) {
+                    status.setText("Please fill in all required fields for employee.");
+                    return;
                 }
+
+                SearchResult result;
+
+                // if empid == 0, treat this as new row
+                if (emp.getEmpid() == 0) {
+                    result = employeeService.addEmployee(emp, adminUser);
+                } else {
+                    result = employeeService.updateEmployee(emp, adminUser);
+                }
+
+                if (result.isSuccess()) {
+                    status.setText(result.getMessage());
+                    searchBar.triggerSearch();  // refresh table
+                    if (!result.getEmployees().isEmpty()) {
+                        form.loadEmployee(result.getEmployees().get(0));
+                    }
+                } else {
+                    status.setText("Save failed: " + result.getMessage());
+                }
+
+            } catch (Exception ex) {
+                status.setText("Error saving employee: " + ex.getMessage());
             }
         });
 
         deleteBtn.setOnAction(e -> {
-            Integer id = form.getLoadedEmployeeId();
+            Integer id = form.getCurrentEmployeeId();
             if (id == null || id == 0) {
-                status.setText("Select an employee from the table before deleting.");
+                status.setText("No employee selected to delete.");
                 return;
             }
 
-            SearchResult sr = employeeService.deleteEmployee(id, adminUser);
-            status.setText(sr.getMessage());
-            if (sr.isSuccess()) {
-                form.clear();
-                search.triggerRefresh();
+            SearchResult result = employeeService.deleteEmployee(id, adminUser);
+            if (result.isSuccess()) {
+                status.setText("Employee deleted.");
+                form.clearForm();
+                searchBar.triggerSearch();
+            } else {
+                status.setText("Delete failed: " + result.getMessage());
             }
-        });
-
-        clearBtn.setOnAction(e -> {
-            form.clear();
-            status.setText("Form cleared.");
         });
 
         backBtn.setOnAction(e -> {
@@ -149,30 +150,35 @@ public class ManagementEmployeesScreen {
             new AdminDashboard().start(new Stage(), adminUser);
         });
 
-        HBox buttonRow = new HBox(10, saveBtn, deleteBtn, clearBtn, backBtn);
-        buttonRow.setAlignment(Pos.CENTER);
-
-        VBox rightPanel = new VBox(10, form.getNode(), buttonRow);
+        VBox rightPanel = new VBox(
+                10,
+                form,
+                new HBox(10, newBtn, saveBtn, deleteBtn),
+                backBtn
+        );
+        rightPanel.setAlignment(Pos.TOP_LEFT);
         rightPanel.setPadding(new Insets(10));
 
-        SplitPane split = new SplitPane();
-        split.setOrientation(Orientation.HORIZONTAL);
-        split.getItems().addAll(table.getNode(), rightPanel);
-        split.setDividerPositions(0.55);
+        SplitPane splitPane = new SplitPane();
+        splitPane.setOrientation(Orientation.HORIZONTAL);
+        splitPane.getItems().addAll(table, rightPanel);
+        splitPane.setDividerPositions(0.55);
+
+        VBox topBox = new VBox(8, title, searchBar);
+        topBox.setPadding(new Insets(10));
 
         BorderPane root = new BorderPane();
-        root.setTop(new VBox(6, header, search.getNode(), hint));
-        BorderPane.setMargin(root.getTop(), new Insets(10));
-        root.setCenter(split);
+        root.setTop(topBox);
+        root.setCenter(splitPane);
         root.setBottom(status);
-        BorderPane.setMargin(status, new Insets(6, 10, 8, 10));
+        BorderPane.setMargin(status, new Insets(5, 10, 10, 10));
 
-        Scene scene = new Scene(root, 980, 540);
-        stage.setTitle("Employee Management");
+        Scene scene = new Scene(root, 900, 520);
+        stage.setTitle("Manage Employees");
         stage.setScene(scene);
         stage.show();
 
-        // load initial data
-        search.triggerRefresh();
+        // initial load
+        searchBar.triggerSearch();
     }
 }

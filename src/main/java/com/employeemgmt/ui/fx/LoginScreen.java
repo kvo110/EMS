@@ -6,79 +6,113 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 /*
-   Login screen with:
-   - show password toggle
-   - role selector
-   - register button
-   - no fancy assets, just emojis so nothing breaks
+    LoginScreen
+    -----------
+    EMS login page for both Admin and Employee.
+
+    Features:
+    - username + password
+    - show password toggle
+    - role dropdown (Employee / Admin)
+    - button to go to RegisterScreen
 */
 public class LoginScreen {
 
-    private final AuthenticationService auth = new AuthenticationService();
+    private final AuthenticationService authService = new AuthenticationService();
 
     public void start(Stage stage) {
+        Label title = new Label("Employee Management System");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
 
-        Label title = new Label("🔐 Employee Management System");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
 
-        TextField username = new TextField();
-        username.setPromptText("Username");
+        // password field (hidden characters)
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
 
-        PasswordField hiddenPass = new PasswordField();
-        hiddenPass.setPromptText("Password");
+        // plain text field for "show password" mode
+        TextField passwordVisibleField = new TextField();
+        passwordVisibleField.setPromptText("Password");
+        passwordVisibleField.setManaged(false);
+        passwordVisibleField.setVisible(false);
 
-        TextField visiblePass = new TextField();
-        visiblePass.setManaged(false);
-        visiblePass.setVisible(false);
+        // checkbox to toggle visibility
+        CheckBox showPasswordCheck = new CheckBox("Show password");
 
-        CheckBox showPass = new CheckBox("Show Password");
+        // when toggled, switch which field is visible
+        showPasswordCheck.setOnAction(e -> {
+            if (showPasswordCheck.isSelected()) {
+                // switch to visible field
+                passwordVisibleField.setText(passwordField.getText());
+                passwordVisibleField.setManaged(true);
+                passwordVisibleField.setVisible(true);
 
-        showPass.selectedProperty().addListener((obs, was, isNow) -> {
-            if (isNow) {
-                visiblePass.setText(hiddenPass.getText());
-                visiblePass.setManaged(true);
-                visiblePass.setVisible(true);
-                hiddenPass.setManaged(false);
-                hiddenPass.setVisible(false);
+                passwordField.setManaged(false);
+                passwordField.setVisible(false);
             } else {
-                hiddenPass.setText(visiblePass.getText());
-                hiddenPass.setManaged(true);
-                hiddenPass.setVisible(true);
-                visiblePass.setManaged(false);
-                visiblePass.setVisible(false);
+                // switch back to hidden field
+                passwordField.setText(passwordVisibleField.getText());
+                passwordField.setManaged(true);
+                passwordField.setVisible(true);
+
+                passwordVisibleField.setManaged(false);
+                passwordVisibleField.setVisible(false);
             }
         });
 
-        ComboBox<String> role = new ComboBox<>();
-        role.getItems().addAll("Employee", "Admin");
-        role.setValue("Employee");
+        VBox passwordBox = new VBox(4, passwordField, passwordVisibleField, showPasswordCheck);
 
-        Label msg = new Label();
-        msg.setStyle("-fx-text-fill: red;");
+        ComboBox<String> roleBox = new ComboBox<>();
+        roleBox.getItems().addAll("Employee", "Admin");
+        roleBox.setValue("Employee");
 
-        Button login = new Button("➡ Login");
-        login.setPrefWidth(180);
+        Button loginBtn = new Button("Login");
+        loginBtn.setPrefWidth(180);
 
-        Button register = new Button("📝 Register");
-        register.setPrefWidth(180);
+        Button registerBtn = new Button("Register");
+        registerBtn.setPrefWidth(180);
 
-        login.setOnAction(e -> {
-            String user = username.getText().trim();
-            String pass = showPass.isSelected() ? visiblePass.getText().trim() : hiddenPass.getText().trim();
+        Label message = new Label();
+        message.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
 
-            if (user.isEmpty() || pass.isEmpty()) {
-                msg.setText("Please enter username and password.");
+        // main login logic
+        loginBtn.setOnAction(e -> {
+            String username = usernameField.getText().trim();
+            String password = showPasswordCheck.isSelected()
+                    ? passwordVisibleField.getText().trim()
+                    : passwordField.getText().trim();
+            String chosenRole = roleBox.getValue();
+
+            if (username.isEmpty() || password.isEmpty()) {
+                message.setText("Please enter both username and password.");
                 return;
             }
 
-            AuthenticationResult result = auth.login(user, pass);
+            if (chosenRole == null) {
+                message.setText("Please select a role.");
+                return;
+            }
+
+            AuthenticationResult result = authService.login(username, password);
 
             if (!result.isSuccess()) {
-                msg.setText(result.getMessage());
+                message.setText(result.getMessage());
+                return;
+            }
+
+            // final role check (backend still decides the real role)
+            if ("Admin".equals(chosenRole) && !result.getUser().isAdmin()) {
+                message.setText("This account is not an admin.");
+                return;
+            }
+            if ("Employee".equals(chosenRole) && result.getUser().isAdmin()) {
+                message.setText("This account is an admin (choose Admin in the dropdown).");
                 return;
             }
 
@@ -91,27 +125,27 @@ public class LoginScreen {
             }
         });
 
-        register.setOnAction(e -> {
+        registerBtn.setOnAction(e -> {
             stage.close();
             new RegisterScreen().start(new Stage());
         });
 
-        VBox layout = new VBox(12,
+        VBox layout = new VBox(
+                12,
                 title,
-                username,
-                hiddenPass,
-                visiblePass,
-                showPass,
-                role,
-                login,
-                register,
-                msg
+                usernameField,
+                passwordBox,
+                roleBox,
+                new HBox(10, loginBtn, registerBtn),
+                message
         );
-        layout.setPadding(new Insets(30));
         layout.setAlignment(Pos.CENTER);
+        layout.setPadding(new Insets(30));
+        layout.setStyle("-fx-background-color: #f7faff;");
 
-        stage.setScene(new Scene(layout, 420, 400));
+        Scene scene = new Scene(layout, 460, 360);
         stage.setTitle("Login");
+        stage.setScene(scene);
         stage.show();
     }
 }
