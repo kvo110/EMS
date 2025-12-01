@@ -6,18 +6,28 @@ import com.employeemgmt.services.EmployeeService;
 import com.employeemgmt.services.EmployeeService.SearchResult;
 import com.employeemgmt.ui.fx.components.EmployeeForm;
 import com.employeemgmt.ui.fx.components.EmployeeTable;
+import com.employeemgmt.ui.fx.components.SearchBar;
+
+import java.util.List;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.util.List;
-
-// Admin-only screen for real employee CRUD.
-// Layout: table on the left, form + buttons on the right.
+/*
+ * ManagementEmployeesScreen
+ * -------------------------
+ * Main CRUD UI for HR admins.
+ * Layout: table on the left, form + buttons on the right.
+ */
 public class ManagementEmployeesScreen {
 
     private final EmployeeService employeeService = new EmployeeService();
@@ -29,106 +39,109 @@ public class ManagementEmployeesScreen {
             return;
         }
 
-        Label header = new Label("Manage Employees");
-        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        Label header = new Label("Employee Management");
+        header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        Label hint = new Label("Tip: use the search fields to filter, then edit on the right.");
+        Label hint = new Label("Tip: type an ID or a name, then hit Search. Leave empty and click Show All for full list.");
         hint.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
 
-        // Search fields (kept simple)
-        TextField firstNameField = new TextField();
-        firstNameField.setPromptText("First Name");
-
-        TextField lastNameField = new TextField();
-        lastNameField.setPromptText("Last Name");
-
-        Button searchBtn = new Button("Search");
-        Button resetBtn = new Button("Reset");
-
-        HBox searchBox = new HBox(8, new Label("Search:"), firstNameField, lastNameField, searchBtn, resetBtn);
-        searchBox.setAlignment(Pos.CENTER_LEFT);
-
-        // Left: table of employees
-        EmployeeTable table = new EmployeeTable();
-
-        // Right: form to edit / create
-        EmployeeForm form = new EmployeeForm();
-
         Label status = new Label();
-        status.setStyle("-fx-font-size: 11px; -fx-text-fill: #333;");
+        status.setStyle("-fx-text-fill: #444; -fx-font-size: 12px;");
 
-        Button saveBtn = new Button("Save / Update");
-        Button newBtn = new Button("New Employee");
-        Button deleteBtn = new Button("Delete");
-        Button backBtn = new Button("Back");
+        EmployeeTable table = new EmployeeTable();
+        EmployeeForm form = new EmployeeForm();
+        SearchBar search = new SearchBar();
 
-        saveBtn.setPrefWidth(140);
-        newBtn.setPrefWidth(140);
-        deleteBtn.setPrefWidth(140);
-        backBtn.setPrefWidth(140);
+        // search logic
+        search.setSearchAction(query -> {
+            SearchResult sr;
 
-        // Search logic
-        searchBtn.setOnAction(e -> {
-            String first = firstNameField.getText().trim();
-            String last = lastNameField.getText().trim();
-
-            SearchResult sr = employeeService.searchByName(first, last, adminUser);
-            updateTableAndStatus(table, status, sr);
-        });
-
-        // Reset just loads everyone again
-        resetBtn.setOnAction(e -> {
-            firstNameField.clear();
-            lastNameField.clear();
-            loadAllEmployees(table, status, adminUser);
-        });
-
-        // When a row is selected, load into form
-        table.setOnRowSelected(emp -> {
-            if (emp == null) {
-                form.clear();
+            if (query == null || query.isBlank()) {
+                sr = employeeService.getAllEmployees(adminUser);
+            } else if (query.trim().matches("\\d+")) {
+                int id = Integer.parseInt(query.trim());
+                sr = employeeService.searchEmployeeById(id, adminUser);
             } else {
-                form.loadEmployee(emp);
+                String[] parts = query.trim().split("\\s+", 2);
+                String first = parts[0];
+                String last = parts.length > 1 ? parts[1] : "";
+                sr = employeeService.searchByName(first, last, adminUser);
             }
-        });
 
-        // Save / Update handler
-        saveBtn.setOnAction(e -> {
-            Employee emp = form.buildEmployeeFromFields();
-            if (emp == null || !emp.isValid()) {
-                status.setText("Please fill in all required fields before saving.");
+            if (!sr.isSuccess()) {
+                table.update(List.of());
+                status.setText(sr.getMessage());
                 return;
             }
 
-            if (form.getLoadedEmployeeId() == null) {
-                // New employee
-                SearchResult sr = employeeService.addEmployee(emp, adminUser);
-                updateTableAndStatus(table, status, sr);
-                if (sr.isSuccess()) {
-                    form.loadEmployee(sr.getEmployees().get(0));
-                }
+            table.update(sr.getEmployees());
+            status.setText("Loaded " + sr.getCount() + " employee(s).");
+        });
+
+        // when user clicks a row, load into form
+        table.setOnRowSelected(emp -> {
+            if (emp == null) {
+                form.clear();
+                status.setText("Selection cleared.");
             } else {
-                // Existing employee
-                SearchResult sr = employeeService.updateEmployee(emp, adminUser);
-                updateTableAndStatus(table, status, sr);
+                form.loadEmployee(emp);
+                status.setText("Loaded employee " + emp.getEmpid() + " into form.");
             }
         });
 
-        // Clear form for new entry
-        newBtn.setOnAction(e -> form.clear());
+        Button saveBtn = new Button("Save / Update");
+        Button deleteBtn = new Button("Delete");
+        Button clearBtn = new Button("Clear Form");
+        Button backBtn = new Button("Back");
 
-        // Delete selected employee
+        saveBtn.setPrefWidth(130);
+        deleteBtn.setPrefWidth(130);
+        clearBtn.setPrefWidth(130);
+        backBtn.setPrefWidth(130);
+
+        saveBtn.setOnAction(e -> {
+            Employee emp = form.buildEmployeeFromFields();
+            if (!emp.isValid()) {
+                status.setText("Please fill in all required fields (first name, last name, email, hire date, salary).");
+                return;
+            }
+
+            SearchResult sr;
+            if (emp.getEmpid() == 0) {
+                sr = employeeService.addEmployee(emp, adminUser);
+            } else {
+                sr = employeeService.updateEmployee(emp, adminUser);
+            }
+
+            status.setText(sr.getMessage());
+            if (sr.isSuccess()) {
+                search.triggerRefresh();
+                if (emp.getEmpid() == 0) {
+                    form.clear();
+                } else {
+                    form.loadEmployee(emp);
+                }
+            }
+        });
+
         deleteBtn.setOnAction(e -> {
             Integer id = form.getLoadedEmployeeId();
-            if (id == null) {
-                status.setText("Select an employee in the table before deleting.");
+            if (id == null || id == 0) {
+                status.setText("Select an employee from the table before deleting.");
                 return;
             }
 
             SearchResult sr = employeeService.deleteEmployee(id, adminUser);
             status.setText(sr.getMessage());
-            loadAllEmployees(table, status, adminUser);
+            if (sr.isSuccess()) {
+                form.clear();
+                search.triggerRefresh();
+            }
+        });
+
+        clearBtn.setOnAction(e -> {
             form.clear();
+            status.setText("Form cleared.");
         });
 
         backBtn.setOnAction(e -> {
@@ -136,46 +149,30 @@ public class ManagementEmployeesScreen {
             new AdminDashboard().start(new Stage(), adminUser);
         });
 
-        // Right side layout
-        VBox rightPanel = new VBox(
-                10,
-                form.getNode(),
-                new HBox(10, saveBtn, newBtn, deleteBtn),
-                backBtn,
-                status
-        );
+        HBox buttonRow = new HBox(10, saveBtn, deleteBtn, clearBtn, backBtn);
+        buttonRow.setAlignment(Pos.CENTER);
+
+        VBox rightPanel = new VBox(10, form.getNode(), buttonRow);
         rightPanel.setPadding(new Insets(10));
-        rightPanel.setAlignment(Pos.TOP_LEFT);
 
-        // SplitPane: table on left, form on right
-        SplitPane split = new SplitPane(table.getNode(), rightPanel);
+        SplitPane split = new SplitPane();
         split.setOrientation(Orientation.HORIZONTAL);
-        split.setDividerPositions(0.5);
-
-        VBox topBox = new VBox(6, header, hint, searchBox);
-        topBox.setPadding(new Insets(10));
+        split.getItems().addAll(table.getNode(), rightPanel);
+        split.setDividerPositions(0.55);
 
         BorderPane root = new BorderPane();
-        root.setTop(topBox);
+        root.setTop(new VBox(6, header, search.getNode(), hint));
+        BorderPane.setMargin(root.getTop(), new Insets(10));
         root.setCenter(split);
+        root.setBottom(status);
+        BorderPane.setMargin(status, new Insets(6, 10, 8, 10));
 
-        Scene scene = new Scene(root, 900, 520);
-        stage.setTitle("Manage Employees");
+        Scene scene = new Scene(root, 980, 540);
+        stage.setTitle("Employee Management");
         stage.setScene(scene);
         stage.show();
 
-        // Initial load: all employees
-        loadAllEmployees(table, status, adminUser);
-    }
-
-    private void loadAllEmployees(EmployeeTable table, Label status, User adminUser) {
-        SearchResult sr = employeeService.getAllEmployees(adminUser);
-        updateTableAndStatus(table, status, sr);
-    }
-
-    private void updateTableAndStatus(EmployeeTable table, Label status, SearchResult sr) {
-        List<Employee> employees = sr.getEmployees();
-        table.update(employees);
-        status.setText(sr.getMessage() + " (" + employees.size() + " record(s))");
+        // load initial data
+        search.triggerRefresh();
     }
 }

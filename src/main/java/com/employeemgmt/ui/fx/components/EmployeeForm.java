@@ -1,115 +1,122 @@
 package com.employeemgmt.ui.fx.components;
 
 import com.employeemgmt.models.Employee;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-
-// Small form used on the right side of the admin CRUD screen.
-// Only focuses on the core DB columns.
+/*
+ * EmployeeForm
+ * ------------
+ * Simple form for editing one employee.
+ * Fields:
+ * - First name, last name, email
+ * - Hire date (yyyy-mm-dd)
+ * - Salary
+ * - SSN (optional)
+ */
 public class EmployeeForm {
 
-    private final TextField empIdField = new TextField();
-    private final TextField firstNameField = new TextField();
-    private final TextField lastNameField = new TextField();
-    private final TextField emailField = new TextField();
-    private final TextField hireDateField = new TextField();  // yyyy-mm-dd
-    private final TextField salaryField = new TextField();
-    private final TextField ssnField = new TextField();
+    private final VBox root;
+    private final TextField fnameField;
+    private final TextField lnameField;
+    private final TextField emailField;
+    private final TextField hireDateField;
+    private final TextField salaryField;
+    private final TextField ssnField;
 
-    private final GridPane root;
-
-    private Integer loadedEmployeeId = null;
+    // keep track of which employee is currently loaded
+    private Integer loadedEmployeeId;
 
     public EmployeeForm() {
-        empIdField.setEditable(false);
-        empIdField.setPromptText("(auto)");
+        fnameField = new TextField();
+        lnameField = new TextField();
+        emailField = new TextField();
+        hireDateField = new TextField();
+        salaryField = new TextField();
+        ssnField = new TextField();
 
-        firstNameField.setPromptText("First name");
-        lastNameField.setPromptText("Last name");
+        fnameField.setPromptText("First name");
+        lnameField.setPromptText("Last name");
         emailField.setPromptText("Email");
-        hireDateField.setPromptText("YYYY-MM-DD");
-        salaryField.setPromptText("Base salary");
-        ssnField.setPromptText("SSN");
+        hireDateField.setPromptText("Hire date (yyyy-mm-dd)");
+        salaryField.setPromptText("Salary, e.g. 55000");
+        ssnField.setPromptText("SSN (optional)");
 
-        root = new GridPane();
-        root.setHgap(8);
-        root.setVgap(8);
+        GridPane grid = new GridPane();
+        grid.setHgap(8);
+        grid.setVgap(8);
+
+        grid.add(new Label("First Name:"), 0, 0);
+        grid.add(fnameField, 1, 0);
+
+        grid.add(new Label("Last Name:"), 0, 1);
+        grid.add(lnameField, 1, 1);
+
+        grid.add(new Label("Email:"), 0, 2);
+        grid.add(emailField, 1, 2);
+
+        grid.add(new Label("Hire Date:"), 0, 3);
+        grid.add(hireDateField, 1, 3);
+
+        grid.add(new Label("Salary:"), 0, 4);
+        grid.add(salaryField, 1, 4);
+
+        grid.add(new Label("SSN:"), 0, 5);
+        grid.add(ssnField, 1, 5);
+
+        root = new VBox(10, grid);
         root.setAlignment(Pos.TOP_LEFT);
         root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: #ffffff; -fx-border-color: #ccd6f6; -fx-border-radius: 4;");
-
-        int row = 0;
-        root.add(new Label("Employee ID:"), 0, row);
-        root.add(empIdField, 1, row++);
-
-        root.add(new Label("First Name*:"), 0, row);
-        root.add(firstNameField, 1, row++);
-
-        root.add(new Label("Last Name*:"), 0, row);
-        root.add(lastNameField, 1, row++);
-
-        root.add(new Label("Email*:"), 0, row);
-        root.add(emailField, 1, row++);
-
-        root.add(new Label("Hire Date*:"), 0, row);
-        root.add(hireDateField, 1, row++);
-
-        root.add(new Label("Salary*:"), 0, row);
-        root.add(salaryField, 1, row++);
-
-        root.add(new Label("SSN:"), 0, row);
-        root.add(ssnField, 1, row);
     }
 
-    public Node getNode() {
-        return root;
-    }
-
-    // Build an Employee object from the current text fields.
+    // builds a new Employee object from the fields
     public Employee buildEmployeeFromFields() {
-        Employee emp = new Employee();
+        Employee e = new Employee();
 
         if (loadedEmployeeId != null) {
-            emp.setEmpid(loadedEmployeeId);
+            e.setEmpid(loadedEmployeeId);
         }
 
-        emp.setFirstName(firstNameField.getText().trim());
-        emp.setLastName(lastNameField.getText().trim());
-        emp.setEmail(emailField.getText().trim());
-        emp.setSsn(ssnField.getText().trim());
+        e.setFirstName(fnameField.getText().trim());
+        e.setLastName(lnameField.getText().trim());
+        e.setEmail(emailField.getText().trim());
 
-        // Hire date
-        String hireText = hireDateField.getText().trim();
-        if (!hireText.isEmpty()) {
+        // hire date parsing
+        String hd = hireDateField.getText().trim();
+        if (!hd.isEmpty()) {
             try {
-                emp.setHireDate(LocalDate.parse(hireText));
+                e.setHireDate(LocalDate.parse(hd));
             } catch (DateTimeParseException ex) {
-                emp.setHireDate(null);
+                // if parsing fails we just leave it null
+                e.setHireDate(null);
             }
         }
 
-        // Salary
         String salaryText = salaryField.getText().trim();
         if (!salaryText.isEmpty()) {
             try {
-                emp.setBaseSalary(new BigDecimal(salaryText));
+                double val = Double.parseDouble(salaryText);
+                e.setBaseSalary(BigDecimal.valueOf(val));
             } catch (NumberFormatException ex) {
-                emp.setBaseSalary(null);
+                e.setBaseSalary(null);
             }
         }
 
-        return emp;
+        e.setSsn(ssnField.getText().trim().isEmpty() ? null : ssnField.getText().trim());
+
+        return e;
     }
 
-    // Load an existing employee into the fields.
     public void loadEmployee(Employee emp) {
         if (emp == null) {
             clear();
@@ -117,25 +124,27 @@ public class EmployeeForm {
         }
 
         loadedEmployeeId = emp.getEmpid();
-        empIdField.setText(String.valueOf(emp.getEmpid()));
-        firstNameField.setText(emp.getFirstName());
-        lastNameField.setText(emp.getLastName());
+
+        fnameField.setText(emp.getFirstName());
+        lnameField.setText(emp.getLastName());
         emailField.setText(emp.getEmail());
-        ssnField.setText(emp.getSsn());
         hireDateField.setText(emp.getHireDate() != null ? emp.getHireDate().toString() : "");
         salaryField.setText(emp.getBaseSalary() != null ? emp.getBaseSalary().toPlainString() : "");
+        ssnField.setText(emp.getSsn() != null ? emp.getSsn() : "");
     }
 
-    // Clear the form for a new entry.
     public void clear() {
         loadedEmployeeId = null;
-        empIdField.clear();
-        firstNameField.clear();
-        lastNameField.clear();
+        fnameField.clear();
+        lnameField.clear();
         emailField.clear();
         hireDateField.clear();
         salaryField.clear();
         ssnField.clear();
+    }
+
+    public Node getNode() {
+        return root;
     }
 
     public Integer getLoadedEmployeeId() {

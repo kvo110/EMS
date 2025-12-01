@@ -1,108 +1,117 @@
 package com.employeemgmt.ui.fx;
 
-import com.employeemgmt.models.User;
 import com.employeemgmt.services.AuthenticationService;
 import com.employeemgmt.services.AuthenticationService.AuthenticationResult;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
-// Simple login window for the EMS app.
-// Uses AuthenticationService to check username/password.
+/*
+   Login screen with:
+   - show password toggle
+   - role selector
+   - register button
+   - no fancy assets, just emojis so nothing breaks
+*/
 public class LoginScreen {
 
-    private final AuthenticationService authService = new AuthenticationService();
+    private final AuthenticationService auth = new AuthenticationService();
 
     public void start(Stage stage) {
-        Label title = new Label("Employee Management System");
-        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
 
-        TextField usernameField = new TextField();
-        usernameField.setPromptText("Username");
+        Label title = new Label("🔐 Employee Management System");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Password");
+        TextField username = new TextField();
+        username.setPromptText("Username");
 
-        // Just a small hint for the user about what they intend
-        ComboBox<String> roleBox = new ComboBox<>();
-        roleBox.getItems().addAll("Employee", "Admin");
-        roleBox.setValue("Employee");
+        PasswordField hiddenPass = new PasswordField();
+        hiddenPass.setPromptText("Password");
 
-        Label message = new Label();
-        message.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
+        TextField visiblePass = new TextField();
+        visiblePass.setManaged(false);
+        visiblePass.setVisible(false);
 
-        Button loginBtn = new Button("Login");
-        loginBtn.setPrefWidth(200);
+        CheckBox showPass = new CheckBox("Show Password");
 
-        Button registerBtn = new Button("Register");
-        registerBtn.setPrefWidth(200);
+        showPass.selectedProperty().addListener((obs, was, isNow) -> {
+            if (isNow) {
+                visiblePass.setText(hiddenPass.getText());
+                visiblePass.setManaged(true);
+                visiblePass.setVisible(true);
+                hiddenPass.setManaged(false);
+                hiddenPass.setVisible(false);
+            } else {
+                hiddenPass.setText(visiblePass.getText());
+                hiddenPass.setManaged(true);
+                hiddenPass.setVisible(true);
+                visiblePass.setManaged(false);
+                visiblePass.setVisible(false);
+            }
+        });
 
-        // Login button handler
-        loginBtn.setOnAction(e -> {
-            String username = usernameField.getText().trim();
-            String password = passwordField.getText().trim();
-            String pickedRole = roleBox.getValue();
+        ComboBox<String> role = new ComboBox<>();
+        role.getItems().addAll("Employee", "Admin");
+        role.setValue("Employee");
 
-            if (username.isEmpty() || password.isEmpty()) {
-                message.setText("Please enter both username and password.");
+        Label msg = new Label();
+        msg.setStyle("-fx-text-fill: red;");
+
+        Button login = new Button("➡ Login");
+        login.setPrefWidth(180);
+
+        Button register = new Button("📝 Register");
+        register.setPrefWidth(180);
+
+        login.setOnAction(e -> {
+            String user = username.getText().trim();
+            String pass = showPass.isSelected() ? visiblePass.getText().trim() : hiddenPass.getText().trim();
+
+            if (user.isEmpty() || pass.isEmpty()) {
+                msg.setText("Please enter username and password.");
                 return;
             }
 
-            AuthenticationResult result = authService.login(username, password);
+            AuthenticationResult result = auth.login(user, pass);
 
             if (!result.isSuccess()) {
-                message.setText(result.getMessage());
-                return;
-            }
-
-            User loggedIn = result.getUser();
-
-            // Light guard: if user picked "Admin" but is not admin
-            if ("Admin".equals(pickedRole) && !loggedIn.isAdmin()) {
-                message.setText("This account is not an admin.");
-                return;
-            }
-
-            if ("Employee".equals(pickedRole) && loggedIn.isAdmin()) {
-                message.setText("This account is an admin. Pick Admin above.");
+                msg.setText(result.getMessage());
                 return;
             }
 
             stage.close();
 
-            if (loggedIn.isAdmin()) {
-                new AdminDashboard().start(new Stage(), loggedIn);
+            if (result.getUser().isAdmin()) {
+                new AdminDashboard().start(new Stage(), result.getUser());
             } else {
-                new EmployeeDashboard().start(new Stage(), loggedIn);
+                new EmployeeDashboard().start(new Stage(), result.getUser());
             }
         });
 
-        // Register goes to the account creation screen
-        registerBtn.setOnAction(e -> {
+        register.setOnAction(e -> {
             stage.close();
             new RegisterScreen().start(new Stage());
         });
 
-        VBox root = new VBox(
-                12,
+        VBox layout = new VBox(12,
                 title,
-                usernameField,
-                passwordField,
-                roleBox,
-                loginBtn,
-                registerBtn,
-                message
+                username,
+                hiddenPass,
+                visiblePass,
+                showPass,
+                role,
+                login,
+                register,
+                msg
         );
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(30));
-        root.setStyle("-fx-background-color: #f7faff;");
+        layout.setPadding(new Insets(30));
+        layout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(root, 420, 380);
+        stage.setScene(new Scene(layout, 420, 400));
         stage.setTitle("Login");
-        stage.setScene(scene);
         stage.show();
     }
 }

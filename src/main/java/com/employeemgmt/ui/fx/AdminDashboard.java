@@ -4,70 +4,56 @@ import com.employeemgmt.models.User;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-// Home screen for HR Admins.
-// Right now the main real button is "Manage Employees".
+/*
+   Admin home page.
+   Added:
+   - Salary Tools (all employees or specific range)
+*/
 public class AdminDashboard {
 
-    public void start(Stage stage, User adminUser) {
-        if (adminUser == null || !adminUser.isAdmin()) {
+    public void start(Stage stage, User admin) {
+        if (admin == null || !admin.isAdmin()) {
             stage.close();
             new LoginScreen().start(new Stage());
             return;
         }
 
-        Label welcome = new Label("Welcome, " + adminUser.getUsername() + " (HR Admin)");
-        welcome.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        Label title = new Label("👤 Admin Dashboard");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
 
-        Label info = new Label("Choose what you want to work on:");
-        info.setStyle("-fx-font-size: 13px; -fx-text-fill: #444;");
+        Button manage = new Button("👥 Manage Employees");
+        Button salaryTools = new Button("💰 Salary Tools");
+        Button logout = new Button("🚪 Logout");
 
-        Button manageEmployeesBtn = new Button("Manage Employees");
-        Button salaryBtn = new Button("Salary Tools (coming later)");
-        Button reportsBtn = new Button("Reports (coming later)");
-        Button logoutBtn = new Button("Logout");
+        manage.setPrefWidth(220);
+        salaryTools.setPrefWidth(220);
+        logout.setPrefWidth(220);
 
-        manageEmployeesBtn.setPrefWidth(220);
-        salaryBtn.setPrefWidth(220);
-        reportsBtn.setPrefWidth(220);
-        logoutBtn.setPrefWidth(220);
-
-        manageEmployeesBtn.setOnAction(e -> {
+        manage.setOnAction(e -> {
             stage.close();
-            new ManagementEmployeesScreen().start(new Stage(), adminUser);
+            new ManagementEmployeesScreen().start(new Stage(), admin);
         });
 
-        // Just making it clear these still do nothing big yet
-        salaryBtn.setOnAction(e ->
-                System.out.println("[FX] Salary tools screen not implemented yet."));
-        reportsBtn.setOnAction(e ->
-                System.out.println("[FX] Reports screen not implemented yet."));
+        salaryTools.setOnAction(e -> {
+            stage.close();
+            new SalaryToolsScreen().start(new Stage(), admin);
+        });
 
-        logoutBtn.setOnAction(e -> {
+        logout.setOnAction(e -> {
             stage.close();
             new LoginScreen().start(new Stage());
         });
 
-        VBox root = new VBox(
-                15,
-                welcome,
-                info,
-                manageEmployeesBtn,
-                salaryBtn,
-                reportsBtn,
-                logoutBtn
-        );
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(30));
-        root.setStyle("-fx-background-color: #eef5ff;");
+        VBox layout = new VBox(15, title, manage, salaryTools, logout);
+        layout.setPadding(new Insets(30));
+        layout.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(root, 520, 400);
+        stage.setScene(new Scene(layout, 520, 420));
         stage.setTitle("Admin Dashboard");
-        stage.setScene(scene);
         stage.show();
     }
 }

@@ -1,5 +1,7 @@
 package com.employeemgmt.ui.fx.components;
 
+import java.util.function.Consumer;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -7,49 +9,54 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 
-import java.util.function.Consumer;
-
-// Small reusable search bar component
-// Just wraps a TextField + a Search button
+/*
+ * SearchBar
+ * ---------
+ * Reusable search bar with:
+ * - Text field
+ * - Search button
+ * - Show All button
+ * It just calls a Consumer<String> with the current query.
+ */
 public class SearchBar {
 
+    private final HBox root;
     private final TextField queryField;
-    private final Button searchButton;
+    private Consumer<String> searchAction;
 
-    private Consumer<String> searchHandler;
-
-    public SearchBar(String placeholder) {
+    public SearchBar() {
         queryField = new TextField();
-        queryField.setPromptText(placeholder);
+        queryField.setPromptText("Search by ID or name...");
 
-        searchButton = new Button("Search");
+        Button searchBtn = new Button("Search");
+        Button showAllBtn = new Button("Show All");
 
-        searchButton.setOnAction(e -> performSearch());
-        queryField.setOnAction(e -> performSearch());
+        searchBtn.setOnAction(e -> fireSearch());
+        showAllBtn.setOnAction(e -> {
+            queryField.clear();
+            fireSearch();
+        });
+
+        root = new HBox(8, queryField, searchBtn, showAllBtn);
+        root.setAlignment(Pos.CENTER_LEFT);
+        root.setPadding(new Insets(5, 0, 5, 0));
     }
 
-    private void performSearch() {
-        if (searchHandler != null) {
-            searchHandler.accept(queryField.getText());
+    private void fireSearch() {
+        if (searchAction != null) {
+            searchAction.accept(queryField.getText());
         }
     }
 
-    // Called by screens to wire up the actual search logic
-    public void setOnSearch(Consumer<String> handler) {
-        this.searchHandler = handler;
+    public void setSearchAction(Consumer<String> action) {
+        this.searchAction = action;
     }
 
-    // Handy to trigger an initial "load all" search
-    public void triggerInitialSearch() {
-        if (searchHandler != null) {
-            searchHandler.accept("");
-        }
+    public void triggerRefresh() {
+        fireSearch();
     }
 
     public Node getNode() {
-        HBox box = new HBox(8, queryField, searchButton);
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.setPadding(new Insets(0, 0, 5, 0));
-        return box;
+        return root;
     }
 }

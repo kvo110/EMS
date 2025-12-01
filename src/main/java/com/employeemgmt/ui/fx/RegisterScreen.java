@@ -10,123 +10,93 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-// Basic "Create Account" screen.
-// Admin accounts do NOT need an Employee ID.
-// Employee accounts MUST be linked to an existing empid row.
+/*
+   Simple registration:
+   - Admin accounts get no empid
+   - Employee accounts require existing empid in DB
+*/
 public class RegisterScreen {
 
-    private final AuthenticationService authService = new AuthenticationService();
+    private final AuthenticationService auth = new AuthenticationService();
 
     public void start(Stage stage) {
-        Label title = new Label("Create New Account");
+
+        Label title = new Label("📝 Create Account");
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        TextField usernameField = new TextField();
-        usernameField.setPromptText("Username");
+        TextField user = new TextField();
+        user.setPromptText("Username");
 
-        PasswordField passwordField = new PasswordField();
-        passwordField.setPromptText("Password");
+        PasswordField pass = new PasswordField();
+        pass.setPromptText("Password");
 
-        PasswordField confirmField = new PasswordField();
-        confirmField.setPromptText("Confirm Password");
+        PasswordField confirm = new PasswordField();
+        confirm.setPromptText("Confirm Password");
 
         ComboBox<String> roleBox = new ComboBox<>();
         roleBox.getItems().addAll("Employee", "Admin");
         roleBox.setValue("Employee");
 
-        TextField empIdField = new TextField();
-        empIdField.setPromptText("Employee ID (required for Employee)");
+        TextField empId = new TextField();
+        empId.setPromptText("Employee ID (Employee role only)");
 
-        Label message = new Label();
-        message.setStyle("-fx-text-fill: red; -fx-font-size: 12px;");
+        Label msg = new Label();
+        msg.setStyle("-fx-text-fill: red;");
 
-        Button createBtn = new Button("Create Account");
-        createBtn.setPrefWidth(200);
+        Button create = new Button("Create Account");
+        Button back = new Button("Back");
 
-        Button backBtn = new Button("Back to Login");
-        backBtn.setPrefWidth(200);
+        create.setOnAction(e -> {
+            String u = user.getText().trim();
+            String p = pass.getText().trim();
+            String c = confirm.getText().trim();
 
-        // Actually create the account
-        createBtn.setOnAction(e -> {
-            String username = usernameField.getText().trim();
-            String password = passwordField.getText().trim();
-            String confirm = confirmField.getText().trim();
-            String roleStr = roleBox.getValue();
-            String empIdText = empIdField.getText().trim();
-
-            if (username.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
-                message.setText("Please fill out username and password fields.");
+            if (!p.equals(c)) {
+                msg.setText("Passwords do not match.");
                 return;
             }
 
-            if (!password.equals(confirm)) {
-                message.setText("Passwords do not match.");
-                return;
-            }
+            UserRole role = roleBox.getValue().equals("Admin") ? UserRole.ADMIN : UserRole.EMPLOYEE;
 
-            if (roleStr == null) {
-                message.setText("Please select a role.");
-                return;
-            }
-
-            UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.EMPLOYEE;
-
-            // For Employee role, we require an existing empid
-            Integer empid = null;
+            Integer id = null;
             if (role == UserRole.EMPLOYEE) {
-                if (empIdText.isEmpty()) {
-                    message.setText("Employee ID is required for Employee role.");
-                    return;
-                }
                 try {
-                    empid = Integer.parseInt(empIdText);
-                } catch (NumberFormatException ex) {
-                    message.setText("Employee ID must be a valid number.");
+                    id = Integer.parseInt(empId.getText().trim());
+                } catch (Exception ex) {
+                    msg.setText("Employee ID must be a number.");
                     return;
                 }
             }
 
-            UserCreationResult result = authService.createUser(username, password, role, empid);
+            UserCreationResult result = auth.createUser(u, p, role, id);
 
             if (!result.isSuccess()) {
-                message.setText(result.getMessage());
+                msg.setText(result.getMessage());
                 return;
             }
 
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Account Created");
-            alert.setHeaderText(null);
-            alert.setContentText("Account created successfully. You can log in now.");
-            alert.showAndWait();
+            Alert ok = new Alert(Alert.AlertType.INFORMATION);
+            ok.setContentText("Account created. Log in now.");
+            ok.showAndWait();
 
             stage.close();
             new LoginScreen().start(new Stage());
         });
 
-        backBtn.setOnAction(e -> {
+        back.setOnAction(e -> {
             stage.close();
             new LoginScreen().start(new Stage());
         });
 
-        VBox root = new VBox(
-                10,
-                title,
-                usernameField,
-                passwordField,
-                confirmField,
-                roleBox,
-                empIdField,
-                createBtn,
-                backBtn,
-                message
+        VBox layout = new VBox(12,
+                title, user, pass, confirm, roleBox, empId, create, back, msg
         );
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(25));
-        root.setStyle("-fx-background-color: #f7faff;");
 
-        Scene scene = new Scene(root, 450, 420);
+        layout.setPadding(new Insets(25));
+        layout.setAlignment(Pos.CENTER);
+
+        stage.setScene(new Scene(layout, 450, 420));
         stage.setTitle("Register");
-        stage.setScene(scene);
         stage.show();
     }
 }
