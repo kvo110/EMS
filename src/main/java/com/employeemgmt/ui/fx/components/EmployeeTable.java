@@ -3,74 +3,51 @@ package com.employeemgmt.ui.fx.components;
 import com.employeemgmt.models.Employee;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.VBox;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.function.Consumer;
-
-/*
-    EmployeeTable
-    -------------
-    Wrapper around a TableView<Employee> used on the left side
-    of the Manage Employees screen.
-*/
-public class EmployeeTable extends VBox {
+// simple table wrapper so UI code stays clean
+public class EmployeeTable {
 
     private final TableView<Employee> table;
     private final ObservableList<Employee> data = FXCollections.observableArrayList();
 
     public EmployeeTable() {
         table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        TableColumn<Employee, Integer> colId = new TableColumn<>("ID");
+        colId.setCellValueFactory(new PropertyValueFactory<>("empid"));
+
+        TableColumn<Employee, String> colFirst = new TableColumn<>("First");
+        colFirst.setCellValueFactory(new PropertyValueFactory<>("firstName"));
+
+        TableColumn<Employee, String> colLast = new TableColumn<>("Last");
+        colLast.setCellValueFactory(new PropertyValueFactory<>("lastName"));
+
+        TableColumn<Employee, String> colEmail = new TableColumn<>("Email");
+        colEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
+
+        table.getColumns().addAll(colId, colFirst, colLast, colEmail);
         table.setItems(data);
-
-        TableColumn<Employee, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(new PropertyValueFactory<>("empid"));
-        idCol.setPrefWidth(60);
-
-        TableColumn<Employee, String> nameCol = new TableColumn<>("Name");
-        nameCol.setCellValueFactory(c ->
-                javafx.beans.binding.Bindings.createStringBinding(
-                        () -> c.getValue().getFullName()
-                )
-        );
-        nameCol.setPrefWidth(160);
-
-        TableColumn<Employee, String> emailCol = new TableColumn<>("Email");
-        emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
-        emailCol.setPrefWidth(200);
-
-        TableColumn<Employee, LocalDate> hireCol = new TableColumn<>("Hire Date");
-        hireCol.setCellValueFactory(new PropertyValueFactory<>("hireDate"));
-        hireCol.setPrefWidth(110);
-
-        TableColumn<Employee, String> salaryCol = new TableColumn<>("Salary");
-        salaryCol.setCellValueFactory(c ->
-                javafx.beans.binding.Bindings.createStringBinding(
-                        c.getValue()::getFormattedSalary
-                )
-        );
-        salaryCol.setPrefWidth(110);
-
-        table.getColumns().addAll(idCol, nameCol, emailCol, hireCol, salaryCol);
-
-        setPadding(new Insets(10));
-        getChildren().add(table);
     }
 
-    public void setEmployees(List<Employee> employees) {
-        data.setAll(employees);
+    // updates the table rows
+    public void update(java.util.List<Employee> list) {
+        data.setAll(list);
     }
 
-    public void setOnEmployeeSelected(Consumer<Employee> handler) {
+    // callback for when user selects a row
+    public void setOnRowSelected(java.util.function.Consumer<Employee> cb) {
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (handler != null) {
-                handler.accept(newVal);
-            }
+            if (newVal != null) cb.accept(newVal);
         });
+    }
+
+    // returns the actual TableView node
+    public Node getNode() {
+        return table;
     }
 }

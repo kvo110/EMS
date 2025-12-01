@@ -1,50 +1,51 @@
 package com.employeemgmt.ui.fx.components;
 
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 
-import java.util.function.Consumer;
-
 /*
-    SearchBar
-    ---------
-    Tiny reusable search bar:
-    [ text field ] [ Search ] [ Clear ]
+   SearchBar
+   ---------
+   Now supports live refresh by calling the assigned callback
+   every time text changes OR when the Search button is pressed.
 */
-public class SearchBar extends HBox {
+public class SearchBar {
 
-    private final TextField field;
-    private Consumer<String> onSearch;
+    private final TextField field = new TextField();
+    private final Button searchBtn = new Button("Search");
 
-    public SearchBar(String prompt) {
-        this.field = new TextField();
-        this.field.setPromptText(prompt);
+    private SearchAction action;
 
-        Button searchBtn = new Button("Search");
-        Button clearBtn = new Button("Clear");
+    // Functional interface for controller callbacks
+    public interface SearchAction {
+        void execute(String query);
+    }
 
-        searchBtn.setOnAction(e -> triggerSearch());
-        clearBtn.setOnAction(e -> {
-            field.clear();
-            triggerSearch();
+    public SearchBar() {
+        field.setPromptText("Search employees...");
+        field.textProperty().addListener((obs, oldV, newV) -> {
+            if (action != null) action.execute(newV.trim());
         });
 
-        setSpacing(8);
-        setAlignment(Pos.CENTER_LEFT);
-        setPadding(new Insets(5, 0, 5, 0));
-        getChildren().addAll(field, searchBtn, clearBtn);
+        searchBtn.setOnAction(e -> {
+            if (action != null) action.execute(field.getText().trim());
+        });
     }
 
-    public void setOnSearch(Consumer<String> handler) {
-        this.onSearch = handler;
+    public void setSearchAction(SearchAction a) {
+        this.action = a;
     }
 
-    public void triggerSearch() {
-        if (onSearch != null) {
-            onSearch.accept(field.getText());
-        }
+    public void triggerRefresh() {
+        if (action != null) action.execute(field.getText().trim());
+    }
+
+    public Node getNode() {
+        HBox box = new HBox(10, field, searchBtn);
+        box.setPadding(new Insets(5));
+        return box;
     }
 }
