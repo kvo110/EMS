@@ -12,17 +12,21 @@ import javafx.stage.Stage;
 /*
     AdminDashboard
     --------------
-    Home screen for HR Admin accounts.
+    Home screen for HR admins.
 
-    Buttons:
-    - Manage Employees (CRUD screen)
-    - Salary Tools (raise helpers)
-    - Reports (basic text reports)
-    - Logout
+    From here an admin can:
+    - manage employees (full CRUD)
+    - open salary tools (raises, ranges, etc.)
+    - open reports (basic reporting screen)
+    - log out back to the login screen
+
+    I kept this layout super simple on purpose so it is easy
+    to demo in class and talk through each feature.
 */
 public class AdminDashboard {
 
     public void start(Stage stage, User adminUser) {
+        // quick safety check so a non-admin cannot end up here
         if (adminUser == null || !adminUser.isAdmin()) {
             stage.close();
             new LoginScreen().start(new Stage());
@@ -32,35 +36,46 @@ public class AdminDashboard {
         Label welcome = new Label("Welcome, " + adminUser.getUsername() + " (HR Admin)");
         welcome.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        Label hint = new Label("Choose a tool to open:");
-        hint.setStyle("-fx-font-size: 13px; -fx-text-fill: #444;");
+        Label info = new Label("Choose a tool to open:");
+        info.setStyle("-fx-font-size: 13px; -fx-text-fill: #444;");
 
+        // main dashboard buttons
         Button manageEmployeesBtn = new Button("👥 Manage Employees");
-        Button salaryToolsBtn = new Button("💰 Salary Tools");
-        Button reportsBtn = new Button("📊 Reports");
-        Button logoutBtn = new Button("🚪 Logout");
+        Button salaryToolsBtn     = new Button("💰 Salary Tools");
+        Button reportsBtn         = new Button("📊 Reports");
+        Button settingsBtn        = new Button("⚙️ Settings (placeholder)");
+        Button logoutBtn          = new Button("🚪 Logout");
 
-        Button[] buttons = { manageEmployeesBtn, salaryToolsBtn, reportsBtn, logoutBtn };
-        for (Button b : buttons) {
-            b.setPrefWidth(260);
+        // make the buttons feel consistent
+        for (Button b : new Button[]{manageEmployeesBtn, salaryToolsBtn, reportsBtn, settingsBtn, logoutBtn}) {
+            b.setPrefWidth(240);
             b.setStyle("-fx-font-size: 14px;");
         }
 
+        // open the employee CRUD screen
         manageEmployeesBtn.setOnAction(e -> {
             stage.close();
             new ManagementEmployeesScreen().start(new Stage(), adminUser);
         });
 
+        // open the salary tools screen (raises / ranges)
         salaryToolsBtn.setOnAction(e -> {
             stage.close();
             new SalaryToolsScreen().start(new Stage(), adminUser);
         });
 
+        // open the reports screen (all employees + salary summary)
         reportsBtn.setOnAction(e -> {
             stage.close();
             new ReportsScreen().start(new Stage(), adminUser);
         });
 
+        // still a placeholder, so just log something for now
+        settingsBtn.setOnAction(e -> {
+            System.out.println("[FX] Settings screen is not implemented yet.");
+        });
+
+        // send admin back to login
         logoutBtn.setOnAction(e -> {
             stage.close();
             new LoginScreen().start(new Stage());
@@ -69,17 +84,18 @@ public class AdminDashboard {
         VBox layout = new VBox(
                 15,
                 welcome,
-                hint,
+                info,
                 manageEmployeesBtn,
                 salaryToolsBtn,
                 reportsBtn,
+                settingsBtn,
                 logoutBtn
         );
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(30));
         layout.setStyle("-fx-background-color: #eef5ff;");
 
-        Scene scene = new Scene(layout, 520, 380);
+        Scene scene = new Scene(layout, 520, 400);
         stage.setTitle("Admin Dashboard");
         stage.setScene(scene);
         stage.show();

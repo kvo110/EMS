@@ -1,3 +1,4 @@
+// EmployeeDAO.java (updated search fix)
 package com.employeemgmt.dao;
 
 import com.employeemgmt.models.Employee;
@@ -6,24 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/*
-   EmployeeDAO.java
-   ----------------
-   This file handles all direct SQL calls for employees.
-   I tried to keep the queries simple because our schema
-   at this point is pretty clean (empid, fname, lname, etc).
-
-   Notes for team members:
-   - Every method opens a connection, does its job, and closes it.
-   - We always map SQL rows → Employee objects inside this DAO.
-   - No UI logic belongs here.
-*/
 public class EmployeeDAO {
 
-    // Just grabbing our DB connection helper
     private final DatabaseConnection db = DatabaseConnection.getInstance();
 
-    // Helper function to turn one row into an Employee object
     private Employee mapRow(ResultSet rs) throws SQLException {
         Employee e = new Employee();
         e.setEmpid(rs.getInt("empid"));
@@ -36,41 +23,26 @@ public class EmployeeDAO {
         return e;
     }
 
-    // ------------------------------
-    // Find by ID
-    // ------------------------------
     public Optional<Employee> findById(int empId) {
         String sql = "SELECT * FROM employees WHERE empid = ?";
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empId);
             ResultSet rs = ps.executeQuery();
+            if (rs.next()) return Optional.of(mapRow(rs));
 
-            if (rs.next()) {
-                return Optional.of(mapRow(rs));
-            }
         } catch (Exception e) {
             System.out.println("Error findById: " + e.getMessage());
         }
         return Optional.empty();
     }
 
-    // ------------------------------
-    // Find all employees
-    // ------------------------------
     public List<Employee> findAll() {
         List<Employee> list = new ArrayList<>();
         String sql = "SELECT * FROM employees ORDER BY empid";
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                list.add(mapRow(rs));
-            }
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) list.add(mapRow(rs));
         } catch (Exception e) {
             System.out.println("Error findAll: " + e.getMessage());
         }
@@ -78,38 +50,24 @@ public class EmployeeDAO {
         return list;
     }
 
-    // ------------------------------
-    // Find by name (first + last)
-    // Partial matches allowed
-    // ------------------------------
+    // *** FIXED SEARCH ***
+    // Uses LOWER() so searching is always case-insensitive
     public List<Employee> findByName(String first, String last) {
         List<Employee> list = new ArrayList<>();
 
         StringBuilder sql = new StringBuilder("SELECT * FROM employees WHERE 1=1");
 
-        if (first != null && !first.isBlank()) {
-            sql.append(" AND Fname LIKE ?");
-        }
-        if (last != null && !last.isBlank()) {
-            sql.append(" AND Lname LIKE ?");
-        }
+        if (first != null && !first.isBlank()) sql.append(" AND LOWER(Fname) LIKE ?");
+        if (last != null && !last.isBlank()) sql.append(" AND LOWER(Lname) LIKE ?");
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
             int idx = 1;
-
-            if (first != null && !first.isBlank()) {
-                ps.setString(idx++, "%" + first + "%");
-            }
-            if (last != null && !last.isBlank()) {
-                ps.setString(idx++, "%" + last + "%");
-            }
+            if (first != null && !first.isBlank()) ps.setString(idx++, "%" + first.toLowerCase() + "%");
+            if (last != null && !last.isBlank()) ps.setString(idx++, "%" + last.toLowerCase() + "%");
 
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                list.add(mapRow(rs));
-            }
+            while (rs.next()) list.add(mapRow(rs));
 
         } catch (Exception e) {
             System.out.println("Error findByName: " + e.getMessage());
@@ -118,21 +76,13 @@ public class EmployeeDAO {
         return list;
     }
 
-    // ------------------------------
-    // Find by SSN
-    // ------------------------------
     public Optional<Employee> findBySSN(String ssn) {
         String sql = "SELECT * FROM employees WHERE SSN = ?";
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, ssn);
             ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return Optional.of(mapRow(rs));
-            }
+            if (rs.next()) return Optional.of(mapRow(rs));
 
         } catch (Exception e) {
             System.out.println("Error findBySSN: " + e.getMessage());
@@ -140,18 +90,10 @@ public class EmployeeDAO {
         return Optional.empty();
     }
 
-    // ------------------------------
-    // INSERT employees
-    // ------------------------------
     public boolean save(Employee emp) {
-        String sql = """
-            INSERT INTO employees (Fname, Lname, email, HireDate, Salary, SSN)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """;
+        String sql = "INSERT INTO employees (Fname, Lname, email, HireDate, Salary, SSN) VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, emp.getFirstName());
             ps.setString(2, emp.getLastName());
             ps.setString(3, emp.getEmail());
@@ -162,9 +104,7 @@ public class EmployeeDAO {
             int rows = ps.executeUpdate();
             if (rows > 0) {
                 ResultSet keys = ps.getGeneratedKeys();
-                if (keys.next()) {
-                    emp.setEmpid(keys.getInt(1));
-                }
+                if (keys.next()) emp.setEmpid(keys.getInt(1));
                 return true;
             }
 
@@ -174,19 +114,10 @@ public class EmployeeDAO {
         return false;
     }
 
-    // ------------------------------
-    // UPDATE employees
-    // ------------------------------
     public boolean update(Employee emp) {
-        String sql = """
-            UPDATE employees
-            SET Fname=?, Lname=?, email=?, HireDate=?, Salary=?, SSN=?
-            WHERE empid=?
-        """;
+        String sql = "UPDATE employees SET Fname=?, Lname=?, email=?, HireDate=?, Salary=?, SSN=? WHERE empid=?";
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
+        try (Connection conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, emp.getFirstName());
             ps.setString(2, emp.getLastName());
             ps.setString(3, emp.getEmail());
@@ -203,13 +134,7 @@ public class EmployeeDAO {
         return false;
     }
 
-    // ------------------------------
-    // DELETE employees
-    // Note: Must delete referencing FK rows first (address, user_account)
-    // ------------------------------
     public boolean delete(int empid) {
-
-        // Delete address records first
         try (Connection conn = db.getConnection();
              PreparedStatement ps1 = conn.prepareStatement("DELETE FROM address WHERE empid=?");
              PreparedStatement ps2 = conn.prepareStatement("DELETE FROM user_account WHERE empid=?");
@@ -232,32 +157,6 @@ public class EmployeeDAO {
         } catch (Exception e) {
             System.out.println("Error delete: " + e.getMessage());
         }
-
         return false;
-    }
-
-    // ------------------------------
-    // Salary update by range
-    // ------------------------------
-    public int updateSalaryByRange(double percent, double min, double max) {
-        String sql = """
-            UPDATE employees
-            SET Salary = Salary * (1 + (? / 100))
-            WHERE Salary BETWEEN ? AND ?
-        """;
-
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setDouble(1, percent);
-            ps.setDouble(2, min);
-            ps.setDouble(3, max);
-
-            return ps.executeUpdate();
-
-        } catch (Exception e) {
-            System.out.println("Error updateSalaryRange: " + e.getMessage());
-            return 0;
-        }
     }
 }
