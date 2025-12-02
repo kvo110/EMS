@@ -21,16 +21,11 @@ public class SearchBar {
     public SearchBar() {
         field.setPromptText("Search employees...");
 
-        // real-time search when typing (ignores blank strings)
+        // live search as user types
         field.textProperty().addListener((obs, oldV, newV) -> {
             if (action != null) {
                 String q = newV.trim();
-                if (!q.isEmpty()) {
-                    action.execute(q);
-                } else {
-                    // if you clear the box, caller gets an empty string
-                    action.execute("");
-                }
+                action.execute(q);
             }
         });
 

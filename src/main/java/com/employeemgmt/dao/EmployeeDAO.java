@@ -9,15 +9,16 @@ import java.util.Optional;
 /*
     EmployeeDAO
     -----------
-    This class is where all the direct SQL for employees lives.
-    The UI should never talk to the database directly, it should go through here.
+    All raw SQL for employees lives here.
+    UI and services should go through this class instead of talking
+    to the database directly.
 */
 public class EmployeeDAO {
 
-    // helper that knows how to open connections using database.properties
+    // shared connection helper (reads database.properties)
     private final DatabaseConnection db = DatabaseConnection.getInstance();
 
-    // maps one row from ResultSet into a nice Employee object
+    // map one DB row into an Employee object
     private Employee mapRow(ResultSet rs) throws SQLException {
         Employee e = new Employee();
         e.setEmpid(rs.getInt("empid"));
@@ -147,7 +148,6 @@ public class EmployeeDAO {
             if (rows > 0) {
                 ResultSet keys = ps.getGeneratedKeys();
                 if (keys.next()) {
-                    // update the object with the new primary key
                     emp.setEmpid(keys.getInt(1));
                 }
                 return true;

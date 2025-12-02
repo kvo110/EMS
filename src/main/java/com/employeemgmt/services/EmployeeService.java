@@ -3,14 +3,15 @@ package com.employeemgmt.services;
 import com.employeemgmt.dao.EmployeeDAO;
 import com.employeemgmt.models.Employee;
 import com.employeemgmt.models.User;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 /*
     EmployeeService
     ---------------
-    This sits between the UI and the DAO.
-    All permission checks and friendly messages live here.
+    Middle layer between UI and DAO.
+    Handles permissions and wraps messages for the screens.
 */
 public class EmployeeService {
 
@@ -20,7 +21,7 @@ public class EmployeeService {
         this.employeeDAO = new EmployeeDAO();
     }
 
-    // small helper wrapper so the UI can get status + message + list
+    // Small wrapper so screens get status + message + list together
     public static class SearchResult {
         private final boolean success;
         private final String message;
@@ -38,7 +39,7 @@ public class EmployeeService {
         public int getCount() { return employees.size(); }
     }
 
-    // search by employee ID (with permission check)
+    // Search a single employee by ID (used by admin + employee dashboard)
     public SearchResult searchEmployeeById(int empid, User user) {
         try {
             var result = employeeDAO.findById(empid);
@@ -63,7 +64,7 @@ public class EmployeeService {
         }
     }
 
-    // search by first and/or last name (still here for other screens/tests)
+    // Search by first and/or last name (still used in some spots if needed)
     public SearchResult searchByName(String first, String last, User user) {
         try {
             var list = employeeDAO.findByName(first, last);
@@ -80,7 +81,7 @@ public class EmployeeService {
         }
     }
 
-    // search by SSN (very restricted)
+    // Search by SSN (strict)
     public SearchResult searchBySSN(String ssn, User user) {
         try {
             var result = employeeDAO.findBySSN(ssn);
@@ -88,6 +89,7 @@ public class EmployeeService {
             if (result.isPresent()) {
                 Employee emp = result.get();
 
+                // same idea: admin or self only
                 if (!user.isAdmin() && emp.getEmpid() != user.getEmpid()) {
                     return new SearchResult(false, "You cannot view another employee's SSN.", null);
                 }
@@ -104,7 +106,61 @@ public class EmployeeService {
         }
     }
 
-    // get all employees (admins see everyone, others only see themselves)
+    // Unified search: name, empid, email, SSN, hire date string
+    // (DOB is not in the DB schema right now, so we can't truly filter on DOB from SQL)
+    public SearchResult searchAllFields(String query, User user) {
+        String q = (query == null) ? "" : query.trim().toLowerCase();
+
+        try {
+            List<Employee> list = employeeDAO.findAll();
+
+            if (!q.isEmpty()) {
+                final String qq = q;
+
+                list.removeIf(e -> {
+                    boolean match = false;
+
+                    // empid as text
+                    if (String.valueOf(e.getEmpid()).contains(qq)) match = true;
+
+                    // first / last name
+                    if (e.getFirstName() != null &&
+                            e.getFirstName().toLowerCase().contains(qq)) match = true;
+                    if (e.getLastName() != null &&
+                            e.getLastName().toLowerCase().contains(qq)) match = true;
+
+                    // email
+                    if (e.getEmail() != null &&
+                            e.getEmail().toLowerCase().contains(qq)) match = true;
+
+                    // SSN
+                    if (e.getSsn() != null &&
+                            e.getSsn().toLowerCase().contains(qq)) match = true;
+
+                    // hire date (string match, e.g. "2024-10-01")
+                    if (e.getHireDate() != null &&
+                            e.getHireDate().toString().contains(qq)) match = true;
+
+                    // if later you add DOB as a real DB column and hydrate it into the model,
+                    // you can hook it in here the same way as hire date.
+
+                    return !match;
+                });
+            }
+
+            // general employees only see their own row
+            if (!user.isAdmin()) {
+                list.removeIf(e -> e.getEmpid() != user.getEmpid());
+            }
+
+            return new SearchResult(true, "Unified search complete.", list);
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error performing unified search: " + e.getMessage(), null);
+        }
+    }
+
+    // All employees (admins see everyone, employees see themselves)
     public SearchResult getAllEmployees(User user) {
         try {
             var list = employeeDAO.findAll();
@@ -120,7 +176,41 @@ public class EmployeeService {
         }
     }
 
-    // add a new employee (admins only)
+    // Employees hired in a date range (Admin-only report)
+    public SearchResult getEmployeesHiredBetween(LocalDate start, LocalDate end, User user) {
+        if (!user.isAdmin()) {
+            return new SearchResult(false, "Only HR Admins can view this report.", null);
+        }
+
+        if (start == null || end == null) {
+            return new SearchResult(false, "Please pick both start and end dates.", null);
+        }
+
+        if (end.isBefore(start)) {
+            return new SearchResult(false, "End date cannot be before start date.", null);
+        }
+
+        try {
+            List<Employee> all = employeeDAO.findAll();
+            List<Employee> filtered = new ArrayList<>();
+
+            for (Employee e : all) {
+                if (e.getHireDate() == null) continue;
+                LocalDate h = e.getHireDate();
+                if ((h.isEqual(start) || h.isAfter(start)) &&
+                        (h.isEqual(end) || h.isBefore(end))) {
+                    filtered.add(e);
+                }
+            }
+
+            return new SearchResult(true, "Hired-in-range report ready.", filtered);
+
+        } catch (Exception e) {
+            return new SearchResult(false, "Error building hire date report: " + e.getMessage(), null);
+        }
+    }
+
+    // Add new employee (Admin only)
     public SearchResult addEmployee(Employee emp, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can add employees.", null);
@@ -141,7 +231,7 @@ public class EmployeeService {
         }
     }
 
-    // update an existing employee (admins only)
+    // Update existing employee (Admin only)
     public SearchResult updateEmployee(Employee emp, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can update employees.", null);
@@ -162,7 +252,7 @@ public class EmployeeService {
         }
     }
 
-    // delete an employee (admins only)
+    // Delete employee (Admin only)
     public SearchResult deleteEmployee(int empid, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can delete employees.", null);
@@ -181,7 +271,7 @@ public class EmployeeService {
         }
     }
 
-    // salary update for a given salary band (used by Salary Tools screen)
+    // Salary update for a band (used by Salary Tools)
     public SearchResult updateSalaryRange(double percent, double min, double max, User user) {
         if (!user.isAdmin()) {
             return new SearchResult(false, "Only HR Admins can modify salaries.", null);
@@ -194,51 +284,5 @@ public class EmployeeService {
         } catch (Exception e) {
             return new SearchResult(false, "Error updating salaries: " + e.getMessage(), null);
         }
-    }
-
-    // ---------------------------------------------------
-    // Unified search for search bar (ID, name, DOB, SSN, etc.)
-    // ---------------------------------------------------
-    public SearchResult searchAllFields(String query, User user) {
-        String q = query.trim().toLowerCase();
-
-        // grab everyone first, then filter in memory
-        var list = employeeDAO.findAll();
-
-        // needs to be effectively final for the lambda
-        final String qLower = q;
-
-        list.removeIf(e -> {
-            boolean match = false;
-
-            // by empid
-            if (String.valueOf(e.getEmpid()).contains(qLower)) match = true;
-
-            // by first/last name
-            if (e.getFirstName() != null &&
-                    e.getFirstName().toLowerCase().contains(qLower)) match = true;
-            if (e.getLastName() != null &&
-                    e.getLastName().toLowerCase().contains(qLower)) match = true;
-
-            // by SSN
-            if (e.getSsn() != null &&
-                    e.getSsn().toLowerCase().contains(qLower)) match = true;
-
-            // by DOB (stored on the model, formatted as yyyy-MM-dd)
-            if (e.getDob() != null &&
-                    e.getDob().toString().contains(qLower)) match = true;
-
-            // you can also match email if you want more hits
-            if (e.getEmail() != null &&
-                    e.getEmail().toLowerCase().contains(qLower)) match = true;
-
-            return !match;
-        });
-
-        if (!user.isAdmin()) {
-            list.removeIf(e -> e.getEmpid() != user.getEmpid());
-        }
-
-        return new SearchResult(true, "Unified search complete.", list);
     }
 }
