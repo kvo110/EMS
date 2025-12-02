@@ -4,6 +4,7 @@ import com.employeemgmt.models.Employee;
 import com.employeemgmt.models.User;
 import com.employeemgmt.services.EmployeeService;
 import com.employeemgmt.services.EmployeeService.SearchResult;
+import com.employeemgmt.services.ReportService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -14,20 +15,24 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /*
     ReportsScreen
     -------------
-    Light reporting page for HR admins.
+    Basic reporting screen for HR admins.
 
-    Currently:
-    - All Employees report
-    - Salary Summary (total + average)
-    - Employees hired in a date range
+    Currently supports:
+    - All employees dump
+    - Salary summary (total + average)
+    - Total pay for month by job title   (uses pay_statements + job_title)
+    - Total pay for month by division    (uses pay_statements + division)
+    - Employees hired in a date range    (HireDate from employees)
 */
 public class ReportsScreen {
 
     private final EmployeeService employeeService = new EmployeeService();
+    private final ReportService reportService = new ReportService();
 
     public void start(Stage stage, User adminUser) {
         if (adminUser == null || !adminUser.isAdmin()) {
@@ -43,24 +48,33 @@ public class ReportsScreen {
         reportArea.setEditable(false);
         reportArea.setPrefRowCount(18);
 
+        // existing buttons
         Button allEmployeesBtn = new Button("All Employees");
         Button salarySummaryBtn = new Button("Salary Summary");
-        Button hiredRangeBtn = new Button("Hired in Date Range");
+
+        // new report inputs
+        TextField yearField = new TextField();
+        yearField.setPromptText("Year (e.g. 2025)");
+        yearField.setPrefWidth(110);
+
+        TextField monthField = new TextField();
+        monthField.setPromptText("Month (1-12)");
+        monthField.setPrefWidth(100);
+
+        Button jobPayBtn = new Button("Monthly Job Pay");
+        Button divisionPayBtn = new Button("Monthly Division Pay");
+
+        DatePicker startHirePicker = new DatePicker();
+        startHirePicker.setPromptText("Hire start");
+
+        DatePicker endHirePicker = new DatePicker();
+        endHirePicker.setPromptText("Hire end");
+
+        Button hiresRangeBtn = new Button("Hires in Range");
+
         Button backBtn = new Button("Back to Admin");
 
-        // date pickers for hire range report
-        DatePicker fromPicker = new DatePicker();
-        fromPicker.setPromptText("Start date");
-        DatePicker toPicker = new DatePicker();
-        toPicker.setPromptText("End date");
-
-        HBox rangeControls = new HBox(
-                8,
-                new Label("From:"), fromPicker,
-                new Label("To:"), toPicker,
-                hiredRangeBtn
-        );
-        rangeControls.setAlignment(Pos.CENTER_LEFT);
+        // --- existing behavior ---
 
         allEmployeesBtn.setOnAction(e -> {
             SearchResult result = employeeService.getAllEmployees(adminUser);
@@ -113,32 +127,46 @@ public class ReportsScreen {
             reportArea.setText(sb.toString());
         });
 
-        hiredRangeBtn.setOnAction(e -> {
-            LocalDate from = fromPicker.getValue();
-            LocalDate to = toPicker.getValue();
+        // --- new reports ---
 
-            SearchResult result = employeeService.getEmployeesHiredBetween(from, to, adminUser);
-            if (!result.isSuccess()) {
-                reportArea.setText("Error: " + result.getMessage());
+        jobPayBtn.setOnAction(e -> {
+            try {
+                int year = Integer.parseInt(yearField.getText().trim());
+                int month = Integer.parseInt(monthField.getText().trim());
+                List<String> lines = reportService.monthlyPayByJob(year, month, adminUser);
+                reportArea.setText(String.join("\n", lines));
+            } catch (NumberFormatException ex) {
+                reportArea.setText("Please enter a valid year and month.");
+            }
+        });
+
+        divisionPayBtn.setOnAction(e -> {
+            try {
+                int year = Integer.parseInt(yearField.getText().trim());
+                int month = Integer.parseInt(monthField.getText().trim());
+                List<String> lines = reportService.monthlyPayByDivision(year, month, adminUser);
+                reportArea.setText(String.join("\n", lines));
+            } catch (NumberFormatException ex) {
+                reportArea.setText("Please enter a valid year and month.");
+            }
+        });
+
+        hiresRangeBtn.setOnAction(e -> {
+            LocalDate startDate = startHirePicker.getValue();
+            LocalDate endDate = endHirePicker.getValue();
+
+            if (startDate == null || endDate == null) {
+                reportArea.setText("Please pick both start and end dates.");
                 return;
             }
 
-            StringBuilder sb = new StringBuilder();
-            sb.append("Employees Hired Between ")
-              .append(from).append(" and ").append(to).append("\n");
-            sb.append("====================================\n\n");
-
-            for (Employee emp : result.getEmployees()) {
-                sb.append("ID: ").append(emp.getEmpid()).append("  ");
-                sb.append("Name: ").append(emp.getFullName()).append("  ");
-                sb.append("Hire Date: ").append(emp.getHireDate()).append("\n");
+            if (endDate.isBefore(startDate)) {
+                reportArea.setText("End date cannot be before start date.");
+                return;
             }
 
-            if (result.getEmployees().isEmpty()) {
-                sb.append("No employees hired in this range.\n");
-            }
-
-            reportArea.setText(sb.toString());
+            List<String> lines = reportService.employeesHiredBetween(startDate, endDate, adminUser);
+            reportArea.setText(String.join("\n", lines));
         });
 
         backBtn.setOnAction(e -> {
@@ -146,21 +174,24 @@ public class ReportsScreen {
             new AdminDashboard().start(new Stage(), adminUser);
         });
 
-        HBox buttonsRow = new HBox(10, allEmployeesBtn, salarySummaryBtn, backBtn);
-        buttonsRow.setAlignment(Pos.CENTER_LEFT);
+        HBox topRow = new HBox(10, allEmployeesBtn, salarySummaryBtn);
+        HBox monthRow = new HBox(8, yearField, monthField, jobPayBtn, divisionPayBtn);
+        HBox hireRow = new HBox(8, startHirePicker, endHirePicker, hiresRangeBtn);
 
         VBox root = new VBox(
-                12,
+                10,
                 title,
-                buttonsRow,
-                rangeControls,
-                reportArea
+                topRow,
+                monthRow,
+                hireRow,
+                reportArea,
+                backBtn
         );
         root.setAlignment(Pos.TOP_LEFT);
         root.setPadding(new Insets(18));
         root.setStyle("-fx-background-color: #f7fbff;");
 
-        Scene scene = new Scene(root, 720, 540);
+        Scene scene = new Scene(root, 780, 560);
         stage.setTitle("Reports");
         stage.setScene(scene);
         stage.show();
